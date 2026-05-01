@@ -1,0 +1,20 @@
+# Hearo 라즈베리파이 필요 패키지
+#
+# 설치 방법:
+#   pip install -r requirements.txt
+#
+# 참고: tflite-runtime은 라즈베리파이에서만 설치
+#       PC에서 테스트할 때는 tensorflow로 대체 가능
+
+# AI 모델 추론 (라즈베리파이용 경량 패키지)
+# PC에서 테스트할 때는 이 줄 대신 tensorflow 설치
+tflite-runtime
+
+# 마이크 녹음
+sounddevice
+
+# 서버로 HTTP 요청 전송
+requests
+
+# 수학 연산 (numpy는 tflite-runtime 설치 시 같이 설치됨)
+numpy
