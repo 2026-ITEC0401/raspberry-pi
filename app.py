@@ -101,13 +101,18 @@ print(f"[초기화] 카테고리 {len(CATEGORIES)}개 로드: {CATEGORIES}")
 # tflite_runtime은 tensorflow 전체를 설치하지 않아도 되는 경량 패키지
 # 라즈베리파이에서는 이걸 써야 메모리/성능 문제가 없음
 try:
-    # 라즈베리파이에서는 tflite_runtime 사용
-    from tflite_runtime.interpreter import Interpreter
-    print("[초기화] tflite_runtime 사용")
+    # Python 3.13 이상: ai-edge-litert 사용
+    from ai_edge_litert.interpreter import Interpreter
+    print("[초기화] ai-edge-litert 사용")
 except ImportError:
-    # PC에서 테스트할 때는 tensorflow에 포함된 것 사용
-    from tensorflow.lite.python.interpreter import Interpreter
-    print("[초기화] tensorflow.lite 사용")
+    try:
+        # 기존 tflite_runtime
+        from tflite_runtime.interpreter import Interpreter
+        print("[초기화] tflite_runtime 사용")
+    except ImportError:
+        # PC에서 테스트할 때는 tensorflow에 포함된 것 사용
+        from tensorflow.lite.python.interpreter import Interpreter
+        print("[초기화] tensorflow.lite 사용")
 
 # --- 1단계 모델: YAMNet (소리 → 1024차원 임베딩 변환) ---
 # 소리 파형(waveform)을 받아서 의미 있는 숫자 배열로 바꿔주는 역할
