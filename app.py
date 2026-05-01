@@ -165,7 +165,7 @@ def record_audio():
     audio = audio.flatten()
 
     # 볼륨 증폭 (INMP441은 소리가 작게 들어올 수 있음)
-    GAIN = 20
+    GAIN = 10
     audio = np.clip(audio * GAIN, -1.0, 1.0)
 
     # 48kHz → 16kHz로 리샘플링 (YAMNet 입력 요구사항)
