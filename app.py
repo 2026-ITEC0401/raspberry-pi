@@ -187,22 +187,15 @@ def extract_embedding(waveform):
     Returns:
         numpy array: 1024차원 임베딩 벡터
     """
-    # YAMNet 입력 크기에 맞게 조정
-    input_shape = yamnet_input_details[0]['shape']
-
-    # 입력 길이가 고정인 경우 맞춰줌
-    expected_len = input_shape[0] if len(input_shape) == 1 else input_shape[1]
-    if len(waveform) < expected_len:
-        # 소리가 짧으면 뒤에 0을 채움 (패딩)
-        waveform = np.pad(waveform, (0, expected_len - len(waveform)))
-    else:
-        # 소리가 길면 앞부분만 자름
-        waveform = waveform[:expected_len]
-
-    # 모델에 입력할 수 있는 형태로 변환
+    # YAMNet TFLite는 동적 입력 크기를 사용함 (shape=[1])
+    # 실제 waveform 길이에 맞게 입력 텐서 크기를 조정해야 함
     input_data = waveform.astype(np.float32)
-    if len(input_shape) > 1:
-        input_data = input_data.reshape(input_shape)
+
+    # 입력 텐서 크기를 실제 오디오 길이로 재설정
+    yamnet_interpreter.resize_tensor_input(
+        yamnet_input_details[0]['index'], [len(input_data)]
+    )
+    yamnet_interpreter.allocate_tensors()
 
     # YAMNet 실행: 소리 → 임베딩
     yamnet_interpreter.set_tensor(yamnet_input_details[0]['index'], input_data)
