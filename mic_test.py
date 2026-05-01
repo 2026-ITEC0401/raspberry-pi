@@ -96,6 +96,13 @@ try:
         dtype='float32'
     )
     sd.wait()  # 녹음 끝날 때까지 대기
+
+    # 볼륨 증폭 (INMP441은 소리가 작게 들어올 수 있음)
+    GAIN = 20  # 증폭 배율 (필요에 따라 조절)
+    audio = audio * GAIN
+    audio = np.clip(audio, -1.0, 1.0)  # -1.0 ~ 1.0 범위 유지
+    print(f"  (볼륨 {GAIN}배 증폭 적용)")
+
 except Exception as e:
     print(f"[오류] 녹음 실패: {e}")
     print("  → 마이크 배선을 다시 확인하세요.")
