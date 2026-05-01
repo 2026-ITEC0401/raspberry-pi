@@ -47,7 +47,7 @@ from scipy.signal import resample
 # 백엔드 서버 주소 (서버를 실행하는 PC의 IP 주소로 변경하세요)
 # 예: 같은 Wi-Fi에서 서버 PC의 IP가 192.168.0.10이면
 #     "http://192.168.0.10:8000"으로 변경
-SERVER_URL = "http://172.20.76.80:8000"
+SERVER_URL = "http://192.168.137.1:8000"
 
 # 이 라즈베리파이의 설치 위치 (프론트엔드에 표시됨)
 LOCATION = "현관"
