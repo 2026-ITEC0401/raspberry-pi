@@ -38,6 +38,7 @@ import time
 import requests
 import os
 import sounddevice as sd
+from scipy.signal import resample
 
 # ============================================================
 # 설정값 (필요에 따라 수정하세요)
@@ -59,7 +60,8 @@ DEVICE_ID = "rpi-001"
 CONFIDENCE_THRESHOLD = 0.9
 
 # 녹음 설정
-SAMPLE_RATE = 16000      # YAMNet이 요구하는 샘플레이트 (16kHz, 변경 금지)
+MIC_SAMPLE_RATE = 48000  # INMP441 마이크의 샘플레이트 (48kHz)
+YAMNET_SAMPLE_RATE = 16000  # YAMNet이 요구하는 샘플레이트 (16kHz)
 RECORD_DURATION = 1.0    # 한 번에 녹음할 길이 (초)
 
 # heartbeat 주기 (초): 서버에 "나 연결돼있어"라고 알려주는 간격
@@ -139,23 +141,29 @@ print(f"  - 출력: {len(CATEGORIES)}개 카테고리 확률")
 
 def record_audio():
     """
-    USB 마이크에서 소리를 녹음합니다.
+    INMP441 마이크에서 소리를 녹음합니다.
+    48kHz로 녹음한 뒤 YAMNet이 요구하는 16kHz로 변환합니다.
 
     Returns:
-        numpy array: 녹음된 소리 데이터 (1차원, float32, -1.0 ~ 1.0)
+        numpy array: 녹음된 소리 데이터 (1차원, float32, 16kHz)
     """
-    # sounddevice로 RECORD_DURATION초 동안 녹음
-    # dtype='float32': -1.0 ~ 1.0 범위의 실수로 변환
+    # 48kHz로 녹음 (INMP441 기본 샘플레이트)
     audio = sd.rec(
-        int(SAMPLE_RATE * RECORD_DURATION),
-        samplerate=SAMPLE_RATE,
+        int(MIC_SAMPLE_RATE * RECORD_DURATION),
+        samplerate=MIC_SAMPLE_RATE,
         channels=1,          # 모노 (마이크 1개)
         dtype='float32'
     )
     sd.wait()  # 녹음이 끝날 때까지 대기
 
     # (N, 1) 형태를 (N,) 1차원으로 변환
-    return audio.flatten()
+    audio = audio.flatten()
+
+    # 48kHz → 16kHz로 리샘플링 (YAMNet 입력 요구사항)
+    target_length = int(len(audio) * YAMNET_SAMPLE_RATE / MIC_SAMPLE_RATE)
+    audio_16k = resample(audio, target_length).astype(np.float32)
+
+    return audio_16k
 
 
 def extract_embedding(waveform):

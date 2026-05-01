@@ -47,7 +47,7 @@ from scipy.io.wavfile import write
 # 설정
 # ============================================================
 
-SAMPLE_RATE = 16000    # 샘플레이트 (16kHz)
+SAMPLE_RATE = 48000    # 샘플레이트 (48kHz, INMP441 기본값)
 DURATION = 3           # 녹음 시간 (초)
 OUTPUT_FILE = "test.wav"
 
