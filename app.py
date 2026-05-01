@@ -125,8 +125,9 @@ yamnet_input_details = yamnet_interpreter.get_input_details()
 yamnet_output_details = yamnet_interpreter.get_output_details()
 
 print(f"[초기화] YAMNet 모델 로드 완료")
-print(f"  - 입력: {yamnet_input_details[0]['shape']} (소리 파형)")
-print(f"  - 출력: 임베딩 벡터 (1024차원)")
+print(f"  - 입력: {yamnet_input_details[0]['shape']} {yamnet_input_details[0]['dtype']} (소리 파형)")
+for i, out in enumerate(yamnet_output_details):
+    print(f"  - 출력[{i}]: {out['shape']} {out['dtype']} (index={out['index']})")
 
 # --- 2단계 모델: Hearo 분류기 (1024차원 임베딩 → 11개 카테고리) ---
 # YAMNet이 뽑아준 숫자 배열을 보고 "이건 도어락 소리다"라고 판단하는 역할
@@ -164,11 +165,10 @@ def record_audio():
     # (N, 1) 형태를 (N,) 1차원으로 변환
     audio = audio.flatten()
 
-    # 볼륨 증폭 (INMP441은 소리가 작게 들어올 수 있음)
-    GAIN = 10
-    audio = np.clip(audio * GAIN, -1.0, 1.0)
-
     # 48kHz → 16kHz로 리샘플링 (YAMNet 입력 요구사항)
+    # 주의: GAIN 증폭을 하지 않음!
+    # 학습 데이터가 원본 볼륨 그대로 학습되었기 때문에,
+    # 여기서도 원본 볼륨을 유지해야 일관성이 맞음
     target_length = int(len(audio) * YAMNET_SAMPLE_RATE / MIC_SAMPLE_RATE)
     audio_16k = resample(audio, target_length).astype(np.float32)
 
@@ -249,6 +249,11 @@ def classify_sound(embedding):
 
     # 결과: [0.01, 0.02, 0.01, 0.95, ...] 같은 확률 배열
     prediction = classifier_interpreter.get_tensor(classifier_output_details[0]['index'])[0]
+
+    # 디버그: 상위 3개 카테고리 확률 출력
+    top3_idx = np.argsort(prediction)[::-1][:3]
+    top3_info = [(CATEGORIES[i], f"{prediction[i]*100:.1f}%") for i in top3_idx]
+    print(f"  [디버그] Top3: {top3_info}")
 
     # 가장 높은 확률의 카테고리 찾기
     best_idx = np.argmax(prediction)
@@ -347,15 +352,22 @@ def main():
             waveform = record_audio()
 
             # 무음 체크: 너무 조용하면 건너뜀 (불필요한 추론 방지)
+            # INMP441은 출력이 작으므로 기준을 낮게 설정
             volume = np.abs(waveform).mean()
-            if volume < 0.01:
+            if volume < 0.001:
                 continue
+
+            # --- 디버그: 입력 오디오 상태 확인 ---
+            print(f"  [디버그] 볼륨: 평균={volume:.6f}, 최대={np.abs(waveform).max():.6f}")
 
             # --- 2. YAMNet으로 임베딩 추출 ---
             embedding = extract_embedding(waveform)
 
             # --- 3. Hearo 분류기로 카테고리 판별 ---
             sound, confidence = classify_sound(embedding)
+
+            # --- 디버그: 분류 결과 상세 출력 ---
+            print(f"  [디버그] 결과: {sound} ({confidence*100:.1f}%)")
 
             # --- 4. threshold 체크 ---
             if confidence >= CONFIDENCE_THRESHOLD:
