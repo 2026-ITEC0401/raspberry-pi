@@ -191,6 +191,7 @@ MODEL_DIR = os.path.join(BASE_DIR, "model")
 YAMNET_MODEL_PATH = os.path.join(MODEL_DIR, "yamnet.tflite")
 CLASSIFIER_MODEL_PATH = os.path.join(MODEL_DIR, "hearo_classifier.tflite")
 CATEGORIES_PATH = os.path.join(MODEL_DIR, "categories.txt")
+YAMNET_CLASSES_PATH = os.path.join(MODEL_DIR, "yamnet_classes.txt")
 
 # ============================================================
 # 카테고리 목록 로드
@@ -199,7 +200,11 @@ CATEGORIES_PATH = os.path.join(MODEL_DIR, "categories.txt")
 with open(CATEGORIES_PATH, "r", encoding="utf-8") as f:
     CATEGORIES = [line.strip() for line in f if line.strip()]
 
+with open(YAMNET_CLASSES_PATH, "r", encoding="utf-8") as f:
+    YAMNET_CLASSES = [line.strip() for line in f if line.strip()]
+
 print(f"[초기화] 카테고리 {len(CATEGORIES)}개 로드: {CATEGORIES}")
+print(f"[초기화] YAMNet 클래스 {len(YAMNET_CLASSES)}개 로드")
 
 # ============================================================
 # TFLite 모델 로드
@@ -328,18 +333,18 @@ def classify_with_yamnet(scores):
 
     # 상위 3개 디버그 출력
     top3_idx = np.argsort(scores)[::-1][:3]
-    top3_info = [(int(i), f"{scores[i]:.3f}") for i in top3_idx]
+    top3_info = [(YAMNET_CLASSES[i], f"{scores[i]:.3f}") for i in top3_idx]
     print(f"  [YAMNet] Top3: {top3_info}")
 
     # 1. 직접 매핑 확인
     if top_idx in YAMNET_DIRECT_MAP:
         category = YAMNET_DIRECT_MAP[top_idx]
-        print(f"  [YAMNet] 직접 매핑: {top_idx} → {category} ({top_confidence:.3f})")
+        print(f"  [YAMNet] 직접 매핑: {YAMNET_CLASSES[top_idx]} → {category} ({top_confidence:.3f})")
         return "direct", category, top_confidence
 
     # 2. 2차 분류기로 넘길지 확인
     if top_idx in YAMNET_TO_CLASSIFIER:
-        print(f"  [YAMNet] 2차 분류기로 넘김: {top_idx} ({top_confidence:.3f})")
+        print(f"  [YAMNet] 2차 분류기로 넘김: {YAMNET_CLASSES[top_idx]} ({top_confidence:.3f})")
         return "classifier", None, top_confidence
 
     # 3. 그 외는 무시
