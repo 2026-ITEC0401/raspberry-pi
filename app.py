@@ -59,7 +59,7 @@ DEVICE_ID = "rpi-001"
 # threshold: 이 값 이상일 때만 서버로 전송 (0.0 ~ 1.0)
 # YAMNet 직접 매핑: YAMNet의 confidence를 사용
 # 2차 분류기: 분류기의 confidence를 사용
-CONFIDENCE_THRESHOLD = 0.5
+CONFIDENCE_THRESHOLD = 0.2
 
 # 녹음 설정
 MIC_SAMPLE_RATE = 48000  # INMP441 마이크의 샘플레이트 (48kHz)
@@ -84,10 +84,6 @@ COOLDOWN_SECONDS = 5
 # --- YAMNet 인덱스 → Hearo 카테고리 직접 매핑 ---
 # 이 소리들은 YAMNet이 충분히 정확하므로 분류기 없이 바로 확정
 YAMNET_DIRECT_MAP = {
-    # 아기 울음
-    19: "아기 울음",    # Crying, sobbing
-    20: "아기 울음",    # Baby cry, infant cry
-
     # 개 짖음
     69: "개 짖음",      # Dog
     70: "개 짖음",      # Bark
@@ -97,17 +93,13 @@ YAMNET_DIRECT_MAP = {
     # 물 소리
     282: "물 소리",     # Water
 
-    # 초인종
-    349: "초인종",      # Doorbell
-    350: "초인종",      # Ding-dong
+    # 초인종 → 인터폰으로 통합
+    349: "인터폰",      # Doorbell
+    350: "인터폰",      # Ding-dong
 
     # 노크 소리
     353: "노크 소리",   # Knock
     354: "노크 소리",   # Tap
-
-    # 휴대폰 벨소리
-    384: "휴대폰 벨소리",  # Telephone bell ringing
-    385: "휴대폰 벨소리",  # Ringtone
 
     # 창문 깨지는 소리
     435: "창문 깨지는 소리",  # Glass
@@ -120,6 +112,10 @@ YAMNET_DIRECT_MAP = {
 # 이 소리들은 한국 가정음 특화이거나 세부 판단이 필요해서
 # 우리 분류기가 판별해야 함
 YAMNET_TO_CLASSIFIER = {
+    # 아기 울음 관련 (사이렌과 혼동 방지를 위해 2차 분류기가 판단)
+    19,    # Crying, sobbing
+    20,    # Baby cry, infant cry
+
     # 사이렌 관련 (한국 사이렌은 나라마다 패턴이 달라 분류기가 판단)
     382,   # Alarm
     389,   # Alarm clock
@@ -426,7 +422,7 @@ def main():
     print(f"  threshold:    {CONFIDENCE_THRESHOLD * 100:.0f}%")
     print(f"  녹음 길이:    {RECORD_DURATION}초")
     print(f"  쿨다운:       {COOLDOWN_SECONDS}초")
-    print(f"  구조:         YAMNet(1차) → 분류기(2차, 도어락/인터폰/가전)")
+    print(f"  구조:         YAMNet(1차) → 분류기(2차, 도어락/인터폰/가전/사이렌/아기울음)")
     print("=" * 55)
     print()
     print("소리를 듣고 있습니다... (종료: Ctrl+C)")
@@ -475,8 +471,16 @@ def main():
                     last_alert_sound = category
 
             elif action == "classifier":
-                # 2차 분류기로 세부 판별 (도어락/인터폰/가전)
+                # 2차 분류기로 세부 판별 (도어락/인터폰/가전/사이렌/아기울음)
                 sound, confidence = classify_sound(embedding)
+
+                # 초인종 → 인터폰으로 통합
+                if sound == "초인종":
+                    sound = "인터폰"
+
+                # 벨소리는 무시 (음악과 구분 불가)
+                if sound == "휴대폰 벨소리":
+                    continue
 
                 if confidence >= CONFIDENCE_THRESHOLD:
                     now = time.time()
