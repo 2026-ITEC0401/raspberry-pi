@@ -254,7 +254,8 @@ def record_audio():
         int(MIC_SAMPLE_RATE * RECORD_DURATION),
         samplerate=MIC_SAMPLE_RATE,
         channels=1,
-        dtype='float32'
+        dtype='float32',
+        device=2  # INMP441 마이크 (arecord -l에서 card 2번)
     )
     sd.wait()
 
