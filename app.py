@@ -105,14 +105,6 @@ YAMNET_DIRECT_MAP = {
     353: "노크 소리",   # Knock
     354: "노크 소리",   # Tap
 
-    # 사이렌 / 알람
-    382: "사이렌",      # Alarm
-    389: "사이렌",      # Alarm clock
-    390: "사이렌",      # Siren
-    391: "사이렌",      # Civil defense siren
-    393: "사이렌",      # Smoke detector, smoke alarm
-    394: "사이렌",      # Fire alarm
-
     # 휴대폰 벨소리
     384: "휴대폰 벨소리",  # Telephone bell ringing
     385: "휴대폰 벨소리",  # Ringtone
@@ -125,9 +117,17 @@ YAMNET_DIRECT_MAP = {
 }
 
 # --- 2차 분류기로 넘길 YAMNet 인덱스 ---
-# 이 소리들은 도어락/인터폰/가전 관련 가능성이 있어서
-# 우리 분류기가 세부 판단해야 함
+# 이 소리들은 한국 가정음 특화이거나 세부 판단이 필요해서
+# 우리 분류기가 판별해야 함
 YAMNET_TO_CLASSIFIER = {
+    # 사이렌 관련 (한국 사이렌은 나라마다 패턴이 달라 분류기가 판단)
+    382,   # Alarm
+    389,   # Alarm clock
+    390,   # Siren
+    391,   # Civil defense siren
+    393,   # Smoke detector, smoke alarm
+    394,   # Fire alarm
+
     # 도어락 관련
     348,   # Door
     351,   # Sliding door
