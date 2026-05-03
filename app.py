@@ -12,9 +12,9 @@ INMP441 마이크로 주변 소리를 계속 듣고 있다가,
 마이크 녹음 (1초 단위)
     → 1차: YAMNet 모델로 521개 카테고리 중 분류
         → 대화, 음악 등 무관한 소리 → 무시
-        → 개 짖음, 사이렌 등 8개 → YAMNet 결과로 바로 확정
-        → 도어락/인터폰/가전 관련 → 2차 분류기로 넘김
-    → 2차: Hearo 분류기로 도어락/인터폰/가전 판별
+        → 개 짖음, 물 소리 등 → YAMNet 결과로 바로 확정
+        → 노크/도어락/사이렌/아기울음 관련 → 2차 분류기로 넘김
+    → 2차: Hearo 분류기로 4개 카테고리 판별
     → confidence(확신도)가 threshold 이상이면
     → 백엔드 서버(FastAPI)로 POST 전송
 
@@ -79,7 +79,7 @@ COOLDOWN_SECONDS = 5
 # YAMNet의 521개 카테고리 중 관련된 것을 매핑
 #
 # 직접 매핑 (4개): 개 짖음, 물 소리, 초인종, 창문 깨지는 소리
-# 2차 분류기 (5개): 노크 소리, 도어락, 사이렌, 아기 울음, 전자레인지
+# 2차 분류기 (4개): 노크 소리, 도어락, 사이렌, 아기 울음
 # 나머지: 무시 (대화, 음악, 동물 등)
 
 # --- YAMNet 인덱스 → Hearo 카테고리 직접 매핑 ---
@@ -140,8 +140,6 @@ YAMNET_TO_CLASSIFIER = {
     475,   # Beep, bleep
     476,   # Ping
 
-    # 전자레인지 관련
-    362,   # Microwave oven
 }
 
 # ============================================================
@@ -316,8 +314,8 @@ def classify_with_yamnet(scores):
 
 def classify_sound(embedding):
     """
-    Hearo 분류기로 임베딩을 11개 카테고리로 분류합니다.
-    (도어락, 인터폰, 가전제품에서만 사용)
+    Hearo 분류기로 임베딩을 4개 카테고리로 분류합니다.
+    (노크 소리, 도어락, 사이렌, 아기 울음)
     """
     input_data = embedding.reshape(1, -1).astype(np.float32)
 
@@ -390,7 +388,7 @@ def main():
     print(f"  분류기 임계값: {CLASSIFIER_THRESHOLD * 100:.0f}%")
     print(f"  녹음 길이:    {RECORD_DURATION}초")
     print(f"  쿨다운:       {COOLDOWN_SECONDS}초")
-    print(f"  구조:         YAMNet(1차) → 분류기(2차, 도어락/전자레인지/사이렌/노크/아기울음)")
+    print(f"  구조:         YAMNet(1차) → 분류기(2차, 노크/도어락/사이렌/아기울음)")
     print("=" * 55)
     print()
     print("소리를 듣고 있습니다... (종료: Ctrl+C)")
@@ -439,7 +437,7 @@ def main():
                     last_alert_sound = category
 
             elif action == "classifier":
-                # 2차 분류기로 세부 판별 (도어락/전자레인지/사이렌/노크/아기울음)
+                # 2차 분류기로 세부 판별 (노크/도어락/사이렌/아기울음)
                 sound, confidence = classify_sound(embedding)
 
                 if confidence >= CLASSIFIER_THRESHOLD:
