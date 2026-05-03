@@ -57,9 +57,10 @@ LOCATION = "현관"
 DEVICE_ID = "rpi-001"
 
 # threshold: 이 값 이상일 때만 서버로 전송 (0.0 ~ 1.0)
-# YAMNet 직접 매핑: YAMNet의 confidence를 사용
-# 2차 분류기: 분류기의 confidence를 사용
-CONFIDENCE_THRESHOLD = 0.2
+# YAMNet 직접 매핑: YAMNet의 confidence를 사용 (0.2)
+# 2차 분류기: 분류기의 confidence를 사용 (0.7)
+YAMNET_THRESHOLD = 0.2
+CLASSIFIER_THRESHOLD = 0.7
 
 # 녹음 설정
 MIC_SAMPLE_RATE = 48000  # INMP441 마이크의 샘플레이트 (48kHz)
@@ -73,13 +74,13 @@ HEARTBEAT_INTERVAL = 30
 COOLDOWN_SECONDS = 5
 
 # ============================================================
-# YAMNet → Hearo 카테고리 매핑
+# YAMNet → Hearo 카테고리 매핑 (v3)
 # ============================================================
-# YAMNet의 521개 카테고리 중 우리 11개와 관련된 것을 매핑
+# YAMNet의 521개 카테고리 중 관련된 것을 매핑
 #
-# 1. 직접 매핑: YAMNet 결과를 바로 우리 카테고리로 변환 (분류기 안 거침)
-# 2. 2차 분류기: YAMNet이 관련 소리로 판단하면 분류기로 넘김
-# 3. 나머지: 무시 (대화, 음악, 동물 등)
+# 직접 매핑 (4개): 개 짖음, 물 소리, 초인종, 창문 깨지는 소리
+# 2차 분류기 (5개): 노크 소리, 도어락, 사이렌, 아기 울음, 전자레인지
+# 나머지: 무시 (대화, 음악, 동물 등)
 
 # --- YAMNet 인덱스 → Hearo 카테고리 직접 매핑 ---
 # 이 소리들은 YAMNet이 충분히 정확하므로 분류기 없이 바로 확정
@@ -93,16 +94,18 @@ YAMNET_DIRECT_MAP = {
     # 물 소리
     282: "물 소리",     # Water
 
-    # 초인종 → 인터폰으로 통합
-    349: "인터폰",      # Doorbell
-    350: "인터폰",      # Ding-dong
-
-    # 노크 소리
-    353: "노크 소리",   # Knock
-    354: "노크 소리",   # Tap
+    # 초인종
+    349: "초인종",      # Doorbell
+    350: "초인종",      # Ding-dong
+    477: "초인종",      # Ding
+    489: "초인종",      # Jingle, tinkle
 
     # 창문 깨지는 소리
+    420: "창문 깨지는 소리",  # Explosion
+    428: "창문 깨지는 소리",  # Burst, pop
+    430: "창문 깨지는 소리",  # Boom
     435: "창문 깨지는 소리",  # Glass
+    436: "창문 깨지는 소리",  # Chink, clink
     437: "창문 깨지는 소리",  # Shatter
     463: "창문 깨지는 소리",  # Smash, crash
     464: "창문 깨지는 소리",  # Breaking
@@ -112,11 +115,15 @@ YAMNET_DIRECT_MAP = {
 # 이 소리들은 한국 가정음 특화이거나 세부 판단이 필요해서
 # 우리 분류기가 판별해야 함
 YAMNET_TO_CLASSIFIER = {
+    # 노크 소리 관련 (YAMNet 단독으로 정확도 부족, 2차 분류기가 판단)
+    353,   # Knock
+    354,   # Tap
+
     # 아기 울음 관련 (사이렌과 혼동 방지를 위해 2차 분류기가 판단)
     19,    # Crying, sobbing
     20,    # Baby cry, infant cry
 
-    # 사이렌 관련 (한국 사이렌은 나라마다 패턴이 달라 분류기가 판단)
+    # 사이렌 관련 (한국 사이렌 패턴 특화)
     382,   # Alarm
     389,   # Alarm clock
     390,   # Siren
@@ -133,48 +140,8 @@ YAMNET_TO_CLASSIFIER = {
     475,   # Beep, bleep
     476,   # Ping
 
-    # 인터폰 관련
-    383,   # Telephone
-    386,   # Telephone dialing, DTMF
-    387,   # Dial tone
-    388,   # Busy signal
-    392,   # Buzzer
-
-    # 가전제품 관련
-    356,   # Cupboard open or close
-    357,   # Drawer open or close
-    358,   # Dishes, pots, and pans
-    359,   # Cutlery, silverware
-    360,   # Chopping (food)
-    361,   # Frying (food)
+    # 전자레인지 관련
     362,   # Microwave oven
-    363,   # Blender
-    364,   # Water tap, faucet
-    365,   # Sink (filling or washing)
-    366,   # Bathtub (filling or washing)
-    367,   # Hair dryer
-    368,   # Toilet flush
-    369,   # Toothbrush
-    370,   # Electric toothbrush
-    371,   # Vacuum cleaner
-    376,   # Electric shaver, electric razor
-    406,   # Mechanical fan
-    407,   # Air conditioning
-    478,   # Clang
-    479,   # Squeal
-    484,   # Sizzle
-    490,   # Hum
-
-    # 기타 관련 가능성 있는 소리
-    395,   # Foghorn
-    396,   # Whistle
-    397,   # Steam whistle
-    420,   # Explosion
-    428,   # Burst, pop
-    430,   # Boom
-    436,   # Chink, clink
-    477,   # Ding
-    489,   # Jingle, tinkle
 }
 
 # ============================================================
@@ -419,10 +386,11 @@ def main():
     print(f"  서버 주소:    {SERVER_URL}")
     print(f"  설치 위치:    {LOCATION}")
     print(f"  기기 ID:      {DEVICE_ID}")
-    print(f"  threshold:    {CONFIDENCE_THRESHOLD * 100:.0f}%")
+    print(f"  YAMNet 임계값: {YAMNET_THRESHOLD * 100:.0f}%")
+    print(f"  분류기 임계값: {CLASSIFIER_THRESHOLD * 100:.0f}%")
     print(f"  녹음 길이:    {RECORD_DURATION}초")
     print(f"  쿨다운:       {COOLDOWN_SECONDS}초")
-    print(f"  구조:         YAMNet(1차) → 분류기(2차, 도어락/인터폰/가전/사이렌/아기울음)")
+    print(f"  구조:         YAMNet(1차) → 분류기(2차, 도어락/전자레인지/사이렌/노크/아기울음)")
     print("=" * 55)
     print()
     print("소리를 듣고 있습니다... (종료: Ctrl+C)")
@@ -458,7 +426,7 @@ def main():
 
             if action == "direct":
                 # YAMNet 직접 매핑: 바로 확정
-                if yamnet_confidence >= CONFIDENCE_THRESHOLD:
+                if yamnet_confidence >= YAMNET_THRESHOLD:
                     # 쿨다운 체크
                     now = time.time()
                     if category == last_alert_sound and (now - last_alert_time) < COOLDOWN_SECONDS:
@@ -471,18 +439,10 @@ def main():
                     last_alert_sound = category
 
             elif action == "classifier":
-                # 2차 분류기로 세부 판별 (도어락/인터폰/가전/사이렌/아기울음)
+                # 2차 분류기로 세부 판별 (도어락/전자레인지/사이렌/노크/아기울음)
                 sound, confidence = classify_sound(embedding)
 
-                # 초인종 → 인터폰으로 통합
-                if sound == "초인종":
-                    sound = "인터폰"
-
-                # 벨소리는 무시 (음악과 구분 불가)
-                if sound == "휴대폰 벨소리":
-                    continue
-
-                if confidence >= CONFIDENCE_THRESHOLD:
+                if confidence >= CLASSIFIER_THRESHOLD:
                     now = time.time()
                     if sound == last_alert_sound and (now - last_alert_time) < COOLDOWN_SECONDS:
                         continue
