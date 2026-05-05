@@ -352,18 +352,17 @@ SOUND_TYPE_MAP = {
 def send_alert(sound, confidence):
     """감지된 소리 정보를 Firebase(Firestore)로 전송합니다."""
     try:
-        # 1. 프론트엔드 명세에 맞게 데이터 가공
-        current_time_ms = int(time.time() * 1000) # 3. 타임스탬프로 전송 (밀리초 단위)
-        sound_type = SOUND_TYPE_MAP.get(sound, "Urgent") # 1. type 필드 추가
+        # 1. 프론트엔드 명세에 맞게 type 필드 추가
+        sound_type = SOUND_TYPE_MAP.get(sound, "Urgent") 
         
         alert_data = {
-            "id": current_time_ms,           # 알림 고유 ID
             "sound": sound,
             "type": sound_type,              # Urgent, Visitor, Appliance
             "confidence": float(confidence), 
             "location": LOCATION,
             "device_id": DEVICE_ID,
-            "time": current_time_ms          # 2. timestamp -> time으로 필드명 변경
+            # 2. timestamp -> time으로 필드명 변경, 3. 타임스탬프 형식은 기존대로 유지
+            "time": firestore.SERVER_TIMESTAMP  
         }
         
         # Firestore의 'alarms' 컬렉션에 데이터 추가
