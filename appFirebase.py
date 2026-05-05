@@ -337,20 +337,38 @@ def classify_sound(embedding):
     return best_category, best_confidence
     
 
+# YAMNet & 분류기 결과를 프론트엔드 LED 색상 타입으로 매핑
+SOUND_TYPE_MAP = {
+    "개 짖음": "Urgent",
+    "물 소리": "Appliance",
+    "초인종": "Visitor",
+    "창문 깨지는 소리": "Urgent",
+    "노크 소리": "Visitor",
+    "도어락": "Visitor",
+    "사이렌": "Urgent",
+    "아기 울음": "Urgent"
+}
+
 def send_alert(sound, confidence):
     """감지된 소리 정보를 Firebase(Firestore)로 전송합니다."""
     try:
+        # 1. 프론트엔드 명세에 맞게 데이터 가공
+        current_time_ms = int(time.time() * 1000) # 3. 타임스탬프로 전송 (밀리초 단위)
+        sound_type = SOUND_TYPE_MAP.get(sound, "Urgent") # 1. type 필드 추가
+        
         alert_data = {
+            "id": current_time_ms,           # 알림 고유 ID
             "sound": sound,
-            "confidence": float(confidence), # Firebase 에러 방지를 위해 float 변환
+            "type": sound_type,              # Urgent, Visitor, Appliance
+            "confidence": float(confidence), 
             "location": LOCATION,
             "device_id": DEVICE_ID,
-            "timestamp": firestore.SERVER_TIMESTAMP # Firebase 서버의 정확한 시간 기록
+            "time": current_time_ms          # 2. timestamp -> time으로 필드명 변경
         }
         
         # Firestore의 'alarms' 컬렉션에 데이터 추가
         db.collection('alarms').add(alert_data)
-        print(f"  → 🔥 Firebase 전송 완료: {sound} ({confidence*100:.1f}%)")
+        print(f"  → 🔥 Firebase 전송 완료: {sound} ({confidence*100:.1f}%) [type: {sound_type}]")
         
     except Exception as e:
         print(f"  → [오류] Firebase 전송 실패: {e}")

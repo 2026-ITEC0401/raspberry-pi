@@ -18,3 +18,9 @@ requests
 
 # 수학 연산 (numpy는 tflite-runtime 설치 시 같이 설치됨)
 numpy
+
+# 오디오 리샘플링
+scipy
+
+# Firebase 서버 연동
+firebase-admin
