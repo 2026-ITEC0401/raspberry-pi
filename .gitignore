@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+
+# 라즈베리파이 인증키
+serviceAccountKey.json
