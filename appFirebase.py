@@ -209,29 +209,38 @@ print(f"  - 직접 매핑: {len(YAMNET_DIRECT_MAP)}개 YAMNet 카테고리")
 print(f"  - 2차 분류기: {len(YAMNET_TO_CLASSIFIER)}개 YAMNet 카테고리")
 
 # ============================================================
+# 마이크 장치 자동 검색 (시작 시 한 번)
+# ============================================================
+MIC_DEVICE_INDEX = None
+print("\n[초기화] 마이크 장치 검색 중...")
+for i, dev in enumerate(sd.query_devices()):
+    print(f"  [{i}] {dev['name']} (in={dev['max_input_channels']}, out={dev['max_output_channels']})")
+    # 입력 채널이 있고, voicehat 또는 i2s가 이름에 포함된 장치 찾기
+    if dev['max_input_channels'] > 0 and ('voicehat' in dev['name'].lower() or 'i2s' in dev['name'].lower()):
+        MIC_DEVICE_INDEX = i
+
+if MIC_DEVICE_INDEX is None:
+    raise RuntimeError("INMP441 마이크를 찾을 수 없습니다! arecord -l 명령으로 확인하세요.")
+
+print(f"[초기화] ✅ 마이크 장치 선택: [{MIC_DEVICE_INDEX}]\n")
+
+# ============================================================
 # 핵심 함수들
 # ============================================================
 
 def record_audio():
-    """
-    INMP441 마이크에서 소리를 녹음합니다.
-    48kHz로 녹음한 뒤 YAMNet이 요구하는 16kHz로 변환합니다.
-    """
     audio = sd.rec(
         int(MIC_SAMPLE_RATE * RECORD_DURATION),
         samplerate=MIC_SAMPLE_RATE,
         channels=1,
         dtype='float32',
-        device=2  # INMP441 마이크 (arecord -l에서 card 2번)
+        device=MIC_DEVICE_INDEX  # ← 자동 검색된 번호 사용
     )
     sd.wait()
 
     audio = audio.flatten()
-
-    # 48kHz → 16kHz 리샘플링 (GAIN 증폭 없음)
     target_length = int(len(audio) * YAMNET_SAMPLE_RATE / MIC_SAMPLE_RATE)
     audio_16k = resample(audio, target_length).astype(np.float32)
-
     return audio_16k
 
 
