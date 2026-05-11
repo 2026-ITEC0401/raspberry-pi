@@ -55,7 +55,7 @@ db = firestore.client()
 # ============================================================
 
 # 이 라즈베리파이의 설치 위치 (프론트엔드에 표시됨)
-LOCATION = "현관"
+LOCATION = "거실"
 
 # 이 라즈베리파이의 기기 식별자 (여러 대일 때 구분용)
 DEVICE_ID = "rpi-001"
@@ -79,37 +79,15 @@ COOLDOWN_SECONDS = 5
 # ============================================================
 # YAMNet의 521개 카테고리 중 관련된 것을 매핑
 #
-# 직접 매핑 (4개): 개 짖음, 물 소리, 초인종, 창문 깨지는 소리
-# 2차 분류기 (4개): 노크 소리, 도어락, 사이렌, 아기 울음
+# 직접 매핑 (1개): 물 소리
+# 2차 분류기 (4개): 노크 소리, 도어락 소리, 사이렌(비상벨) 소리, 아기 울음 소리
 # 나머지: 무시 (대화, 음악, 동물 등)
 
 # --- YAMNet 인덱스 → Hearo 카테고리 직접 매핑 ---
 # 이 소리들은 YAMNet이 충분히 정확하므로 분류기 없이 바로 확정
 YAMNET_DIRECT_MAP = {
-    # 개 짖음
-    69: "개 짖음",      # Dog
-    70: "개 짖음",      # Bark
-    71: "개 짖음",      # Yip
-    73: "개 짖음",      # Bow-wow
-
     # 물 소리
     282: "물 소리",     # Water
-
-    # 초인종
-    349: "초인종",      # Doorbell
-    350: "초인종",      # Ding-dong
-    477: "초인종",      # Ding
-    489: "초인종",      # Jingle, tinkle
-
-    # 창문 깨지는 소리
-    420: "창문 깨지는 소리",  # Explosion
-    428: "창문 깨지는 소리",  # Burst, pop
-    430: "창문 깨지는 소리",  # Boom
-    435: "창문 깨지는 소리",  # Glass
-    436: "창문 깨지는 소리",  # Chink, clink
-    437: "창문 깨지는 소리",  # Shatter
-    463: "창문 깨지는 소리",  # Smash, crash
-    464: "창문 깨지는 소리",  # Breaking
 }
 
 # --- 2차 분류기로 넘길 YAMNet 인덱스 ---
@@ -340,22 +318,30 @@ def classify_sound(embedding):
     print(f"  [분류기] Top3: {top3_info}")
 
     best_idx = np.argmax(prediction)
-    best_category = CATEGORIES[best_idx]
+    raw_category = CATEGORIES[best_idx]
     best_confidence = float(prediction[best_idx])
+
+    if "노크" in raw_category:
+        best_category = "노크 소리"
+    elif "도어락" in raw_category:
+        best_category = "도어락 소리"
+    elif "사이렌" in raw_category:
+        best_category = "사이렌(비상벨) 소리"
+    elif "아기 울음" in raw_category:
+        best_category = "아기 울음 소리"
+    else:
+        best_category = raw_category
 
     return best_category, best_confidence
     
 
 # YAMNet & 분류기 결과를 프론트엔드 LED 색상 타입으로 매핑
 SOUND_TYPE_MAP = {
-    "개 짖음": "Urgent",
-    "물 소리": "Appliance",
-    "초인종": "Visitor",
-    "창문 깨지는 소리": "Urgent",
+    "물 소리": "Normal",
+    "도어락 소리": "Visitor",
     "노크 소리": "Visitor",
-    "도어락": "Visitor",
-    "사이렌": "Urgent",
-    "아기 울음": "Urgent"
+    "사이렌(비상벨) 소리": "Urgent",
+    "아기 울음 소리": "Normal"
 }
 
 def send_alert(sound, confidence):
