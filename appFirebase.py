@@ -319,10 +319,10 @@ def classify_sound(embedding):
 
 # 분류기 결과를 프론트엔드 LED 색상 타입으로 매핑
 SOUND_TYPE_MAP = {
-    "도어락소리": "Visitor-blue",
-    "노크소리": "Visitor-blue",
-    "비상벨소리": "Urgent-red",
-    "아기울음소리": "Normal-yellow"
+    "도어락소리": "Visitor",
+    "노크소리": "Visitor",
+    "비상벨소리": "Urgent",
+    "아기울음소리": "Noise"
 }
 
 def send_alert(sound, confidence):
