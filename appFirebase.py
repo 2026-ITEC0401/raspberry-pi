@@ -12,8 +12,7 @@ INMP441 마이크로 주변 소리를 계속 듣고 있다가,
 마이크 녹음 (1초 단위)
     → 1차: YAMNet 모델로 521개 카테고리 중 분류
         → 대화, 음악 등 무관한 소리 → 무시
-        → 개 짖음, 물 소리 등 → YAMNet 결과로 바로 확정
-        → 노크/도어락/사이렌/아기울음 관련 → 2차 분류기로 넘김
+        → 노크/도어락/비상벨/아기울음 관련 → 2차 분류기로 넘김
     → 2차: Hearo 분류기로 4개 카테고리 판별
     → confidence(확신도)가 threshold 이상이면
     → 백엔드 서버(FastAPI)로 POST 전송
@@ -61,9 +60,7 @@ LOCATION = "거실"
 DEVICE_ID = "rpi-001"
 
 # threshold: 이 값 이상일 때만 서버로 전송 (0.0 ~ 1.0)
-# YAMNet 직접 매핑: YAMNet의 confidence를 사용 (0.2)
 # 2차 분류기: 분류기의 confidence를 사용 (0.7)
-YAMNET_THRESHOLD = 0.2
 CLASSIFIER_THRESHOLD = 0.7
 
 # 녹음 설정
@@ -79,16 +76,8 @@ COOLDOWN_SECONDS = 5
 # ============================================================
 # YAMNet의 521개 카테고리 중 관련된 것을 매핑
 #
-# 직접 매핑 (1개): 물 소리
-# 2차 분류기 (4개): 노크 소리, 도어락 소리, 사이렌(비상벨) 소리, 아기 울음 소리
+# 2차 분류기 (4개): 노크소리, 도어락소리, 비상벨소리, 아기울음소리
 # 나머지: 무시 (대화, 음악, 동물 등)
-
-# --- YAMNet 인덱스 → Hearo 카테고리 직접 매핑 ---
-# 이 소리들은 YAMNet이 충분히 정확하므로 분류기 없이 바로 확정
-YAMNET_DIRECT_MAP = {
-    # 물 소리
-    282: "물 소리",     # Water
-}
 
 # --- 2차 분류기로 넘길 YAMNet 인덱스 ---
 # 이 소리들은 한국 가정음 특화이거나 세부 판단이 필요해서
@@ -183,7 +172,6 @@ classifier_output_details = classifier_interpreter.get_output_details()
 print(f"[초기화] Hearo 분류기 로드 완료")
 print(f"  - 입력: {classifier_input_details[0]['shape']} (1024차원 임베딩)")
 print(f"  - 출력: {len(CATEGORIES)}개 카테고리 확률")
-print(f"  - 직접 매핑: {len(YAMNET_DIRECT_MAP)}개 YAMNet 카테고리")
 print(f"  - 2차 분류기: {len(YAMNET_TO_CLASSIFIER)}개 YAMNet 카테고리")
 
 # ============================================================
@@ -285,25 +273,19 @@ def classify_with_yamnet(scores):
     top3_info = [(YAMNET_CLASSES[i], f"{scores[i]:.3f}") for i in top3_idx]
     print(f"  [YAMNet] Top3: {top3_info}")
 
-    # 1. 직접 매핑 확인
-    if top_idx in YAMNET_DIRECT_MAP:
-        category = YAMNET_DIRECT_MAP[top_idx]
-        print(f"  [YAMNet] 직접 매핑: {YAMNET_CLASSES[top_idx]} → {category} ({top_confidence:.3f})")
-        return "direct", category, top_confidence
-
-    # 2. 2차 분류기로 넘길지 확인
+    # 1. 2차 분류기로 넘길지 확인
     if top_idx in YAMNET_TO_CLASSIFIER:
         print(f"  [YAMNet] 2차 분류기로 넘김: {YAMNET_CLASSES[top_idx]} ({top_confidence:.3f})")
         return "classifier", None, top_confidence
 
-    # 3. 그 외는 무시
+    # 2. 그 외는 무시
     return "ignore", None, top_confidence
 
 
 def classify_sound(embedding):
     """
     Hearo 분류기로 임베딩을 4개 카테고리로 분류합니다.
-    (노크 소리, 도어락, 사이렌, 아기 울음)
+    (노크소리, 도어락소리, 비상벨소리, 아기울음소리)
     """
     input_data = embedding.reshape(1, -1).astype(np.float32)
 
@@ -322,33 +304,32 @@ def classify_sound(embedding):
     best_confidence = float(prediction[best_idx])
 
     if "노크" in raw_category:
-        best_category = "노크 소리"
+        best_category = "노크소리"
     elif "도어락" in raw_category:
-        best_category = "도어락 소리"
-    elif "사이렌" in raw_category:
-        best_category = "사이렌(비상벨) 소리"
-    elif "아기 울음" in raw_category:
-        best_category = "아기 울음 소리"
+        best_category = "도어락소리"
+    elif "사이렌" in raw_category or "비상벨" in raw_category:
+        best_category = "비상벨소리"
+    elif "아기 울음" in raw_category or "아기울음" in raw_category:
+        best_category = "아기울음소리"
     else:
-        best_category = raw_category
+        return None, 0.0
 
     return best_category, best_confidence
     
 
-# YAMNet & 분류기 결과를 프론트엔드 LED 색상 타입으로 매핑
+# 분류기 결과를 프론트엔드 LED 색상 타입으로 매핑
 SOUND_TYPE_MAP = {
-    "물 소리": "Normal",
-    "도어락 소리": "Visitor",
-    "노크 소리": "Visitor",
-    "사이렌(비상벨) 소리": "Urgent",
-    "아기 울음 소리": "Normal"
+    "도어락소리": "Visitor-blue",
+    "노크소리": "Visitor-blue",
+    "비상벨소리": "Urgent-red",
+    "아기울음소리": "Normal-yellow"
 }
 
 def send_alert(sound, confidence):
     """감지된 소리 정보를 Firebase(Firestore)로 전송합니다."""
     try:
         # 1. 프론트엔드 명세에 맞게 type 필드 추가
-        sound_type = SOUND_TYPE_MAP.get(sound, "Urgent") 
+        sound_type = SOUND_TYPE_MAP.get(sound, "Urgent-red") 
         
         alert_data = {
             "sound": sound,
@@ -379,11 +360,10 @@ def main():
     print("=" * 55)
     print(f"  설치 위치:    {LOCATION}")
     print(f"  기기 ID:      {DEVICE_ID}")
-    print(f"  YAMNet 임계값: {YAMNET_THRESHOLD * 100:.0f}%")
     print(f"  분류기 임계값: {CLASSIFIER_THRESHOLD * 100:.0f}%")
     print(f"  녹음 길이:    {RECORD_DURATION}초")
     print(f"  쿨다운:       {COOLDOWN_SECONDS}초")
-    print(f"  구조:         YAMNet(1차) → 분류기(2차, 노크/도어락/사이렌/아기울음)")
+    print(f"  구조:         YAMNet(1차) → 분류기(2차, 노크/도어락/비상벨/아기울음)")
     print("=" * 55)
     print()
     print("소리를 듣고 있습니다... (종료: Ctrl+C)")
@@ -410,25 +390,11 @@ def main():
             # --- 3. YAMNet 결과 분석 ---
             action, category, yamnet_confidence = classify_with_yamnet(scores)
 
-            if action == "direct":
-                # YAMNet 직접 매핑: 바로 확정
-                if yamnet_confidence >= YAMNET_THRESHOLD:
-                    # 쿨다운 체크
-                    now = time.time()
-                    if category == last_alert_sound and (now - last_alert_time) < COOLDOWN_SECONDS:
-                        continue
-
-                    print(f"[감지] {category} ({yamnet_confidence*100:.1f}%) - {LOCATION} [YAMNet]")
-                    send_alert(category, yamnet_confidence)
-
-                    last_alert_time = now
-                    last_alert_sound = category
-
-            elif action == "classifier":
-                # 2차 분류기로 세부 판별 (노크/도어락/사이렌/아기울음)
+            if action == "classifier":
+                # 2차 분류기로 세부 판별 (노크/도어락/비상벨/아기울음)
                 sound, confidence = classify_sound(embedding)
 
-                if confidence >= CLASSIFIER_THRESHOLD:
+                if sound and confidence >= CLASSIFIER_THRESHOLD:
                     now = time.time()
                     if sound == last_alert_sound and (now - last_alert_time) < COOLDOWN_SECONDS:
                         continue
