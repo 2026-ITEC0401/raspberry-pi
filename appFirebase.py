@@ -303,16 +303,27 @@ def classify_sound(embedding):
     raw_category = CATEGORIES[best_idx]
     best_confidence = float(prediction[best_idx])
 
-    if "노크" in raw_category:
+    # 9개 세부 카테고리를 4개의 상위 카테고리로 매핑
+    if raw_category in ["노크_목재", "노크_철재문"]:
         best_category = "노크소리"
-    elif "도어락" in raw_category:
+    elif raw_category in ["도어락_개방음", "도어락_입력음"]:
         best_category = "도어락소리"
-    elif "사이렌" in raw_category or "비상벨" in raw_category:
+    elif raw_category in ["사이렌_삐뽀삐뽀", "사이렌_안내음", "사이렌_애애애애앵", "사이렌_철철철"]:
         best_category = "비상벨소리"
-    elif "아기 울음" in raw_category or "아기울음" in raw_category:
+    elif raw_category in ["아기 울음", "아기울음"]:
         best_category = "아기울음소리"
     else:
-        return None, 0.0
+        # 혹시 모를 다른 카테고리 이름에 대한 폴백(Fallback) 처리
+        if "노크" in raw_category:
+            best_category = "노크소리"
+        elif "도어락" in raw_category:
+            best_category = "도어락소리"
+        elif "사이렌" in raw_category or "비상벨" in raw_category:
+            best_category = "비상벨소리"
+        elif "아기 울음" in raw_category or "아기울음" in raw_category:
+            best_category = "아기울음소리"
+        else:
+            return None, 0.0
 
     return best_category, best_confidence
     
