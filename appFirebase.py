@@ -106,12 +106,15 @@ YAMNET_TO_CLASSIFIER = {
 
     # 도어락 관련
     348,   # Door
+    349,   # Doorbell
     351,   # Sliding door
     352,   # Slam
     355,   # Squeak
     373,   # Keys jangling
     475,   # Beep, bleep
     476,   # Ping
+    477,   # Ding
+    485,   # Clicking
 
 }
 
