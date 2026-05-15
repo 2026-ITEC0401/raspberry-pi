@@ -74,6 +74,25 @@ HEARTBEAT_INTERVAL = 30
 COOLDOWN_SECONDS = 5
 
 # ============================================================
+# 2차 분류기 세부 카테고리 → 상위 카테고리 그룹 매핑
+# ============================================================
+# 2차 분류기는 세부 카테고리(예: 사이렌_삐뽀삐뽀, 사이렌_안내음 등)를 출력하는데,
+# 같은 소리인데 세부 유형이 여러 개면 softmax 확률이 분산되어
+# 개별적으로 threshold(0.7)를 넘지 못하는 문제가 있음.
+# → 같은 그룹의 확률을 합산하여 해결 (예: 사이렌 4개 합산)
+CATEGORY_GROUP_MAP = {
+    "노크_목재": "노크 소리",
+    "노크_철재문": "노크 소리",
+    "도어락_개방음": "도어락",
+    "도어락_입력음": "도어락",
+    "사이렌_삐뽀삐뽀": "사이렌",
+    "사이렌_안내음": "사이렌",
+    "사이렌_애애애애앵": "사이렌",
+    "사이렌_철철철": "사이렌",
+    "아기 울음": "아기 울음",
+}
+
+# ============================================================
 # YAMNet → Hearo 카테고리 매핑 (v3)
 # ============================================================
 # YAMNet의 521개 카테고리 중 관련된 것을 매핑
@@ -314,8 +333,11 @@ def classify_with_yamnet(scores):
 
 def classify_sound(embedding):
     """
-    Hearo 분류기로 임베딩을 4개 카테고리로 분류합니다.
+    Hearo 분류기로 임베딩을 4개 상위 카테고리로 분류합니다.
     (노크 소리, 도어락, 사이렌, 아기 울음)
+
+    세부 카테고리(예: 사이렌_삐뽀삐뽀, 사이렌_안내음 등)의 확률을
+    상위 카테고리 그룹별로 합산하여 반환합니다.
     """
     input_data = embedding.reshape(1, -1).astype(np.float32)
 
@@ -324,16 +346,24 @@ def classify_sound(embedding):
 
     prediction = classifier_interpreter.get_tensor(classifier_output_details[0]['index'])[0]
 
-    # 디버그: 상위 3개
+    # 디버그: 세부 카테고리별 확률
     top3_idx = np.argsort(prediction)[::-1][:3]
     top3_info = [(CATEGORIES[i], f"{prediction[i]*100:.1f}%") for i in top3_idx]
-    print(f"  [분류기] Top3: {top3_info}")
+    print(f"  [분류기] 세부 Top3: {top3_info}")
 
-    best_idx = np.argmax(prediction)
-    best_category = CATEGORIES[best_idx]
-    best_confidence = float(prediction[best_idx])
+    # 상위 카테고리 그룹별 확률 합산
+    group_scores = {}
+    for i, category in enumerate(CATEGORIES):
+        group = CATEGORY_GROUP_MAP.get(category, category)
+        group_scores[group] = group_scores.get(group, 0.0) + float(prediction[i])
 
-    return best_category, best_confidence
+    # 디버그: 그룹별 합산 결과
+    print(f"  [분류기] 그룹 합산: {{{', '.join(f'{k}: {v*100:.1f}%' for k, v in group_scores.items())}}}")
+
+    best_group = max(group_scores, key=group_scores.get)
+    best_confidence = group_scores[best_group]
+
+    return best_group, best_confidence
 
 
 def send_alert(sound, confidence):
