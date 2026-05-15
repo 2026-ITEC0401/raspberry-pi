@@ -140,8 +140,8 @@ with open(CATEGORIES_PATH, "r", encoding="utf-8") as f:
 with open(YAMNET_CLASSES_PATH, "r", encoding="utf-8") as f:
     YAMNET_CLASSES = [line.strip() for line in f if line.strip()]
 
-print(f"[초기화] 카테고리 {len(CATEGORIES)}개 로드: {CATEGORIES}")
-print(f"[초기화] YAMNet 클래스 {len(YAMNET_CLASSES)}개 로드")
+# print(f"[초기화] 카테고리 {len(CATEGORIES)}개 로드: {CATEGORIES}")
+# print(f"[초기화] YAMNet 클래스 {len(YAMNET_CLASSES)}개 로드")
 
 # ============================================================
 # TFLite 모델 로드
@@ -165,10 +165,10 @@ yamnet_interpreter.allocate_tensors()
 yamnet_input_details = yamnet_interpreter.get_input_details()
 yamnet_output_details = yamnet_interpreter.get_output_details()
 
-print(f"[초기화] YAMNet 모델 로드 완료")
-print(f"  - 입력: {yamnet_input_details[0]['shape']} {yamnet_input_details[0]['dtype']}")
-for i, out in enumerate(yamnet_output_details):
-    print(f"  - 출력[{i}]: {out['shape']} {out['dtype']} (index={out['index']})")
+# print(f"[초기화] YAMNet 모델 로드 완료")
+# print(f"  - 입력: {yamnet_input_details[0]['shape']} {yamnet_input_details[0]['dtype']}")
+# for i, out in enumerate(yamnet_output_details):
+#     print(f"  - 출력[{i}]: {out['shape']} {out['dtype']} (index={out['index']})")
 
 # --- Hearo 분류기 모델 로드 ---
 classifier_interpreter = Interpreter(model_path=CLASSIFIER_MODEL_PATH)
@@ -177,18 +177,18 @@ classifier_interpreter.allocate_tensors()
 classifier_input_details = classifier_interpreter.get_input_details()
 classifier_output_details = classifier_interpreter.get_output_details()
 
-print(f"[초기화] Hearo 분류기 로드 완료")
-print(f"  - 입력: {classifier_input_details[0]['shape']} (1024차원 임베딩)")
-print(f"  - 출력: {len(CATEGORIES)}개 카테고리 확률")
-print(f"  - 2차 분류기: {len(YAMNET_TO_CLASSIFIER)}개 YAMNet 카테고리")
+# print(f"[초기화] Hearo 분류기 로드 완료")
+# print(f"  - 입력: {classifier_input_details[0]['shape']} (1024차원 임베딩)")
+# print(f"  - 출력: {len(CATEGORIES)}개 카테고리 확률")
+# print(f"  - 2차 분류기: {len(YAMNET_TO_CLASSIFIER)}개 YAMNet 카테고리")
 
 # ============================================================
 # 마이크 장치 자동 검색 (시작 시 한 번)
 # ============================================================
 MIC_DEVICE_INDEX = None
-print("\n[초기화] 마이크 장치 검색 중...")
+# print("\n[초기화] 마이크 장치 검색 중...")
 for i, dev in enumerate(sd.query_devices()):
-    print(f"  [{i}] {dev['name']} (in={dev['max_input_channels']}, out={dev['max_output_channels']})")
+    # print(f"  [{i}] {dev['name']} (in={dev['max_input_channels']}, out={dev['max_output_channels']})")
     # 입력 채널이 있고, voicehat 또는 i2s가 이름에 포함된 장치 찾기
     if dev['max_input_channels'] > 0 and ('voicehat' in dev['name'].lower() or 'i2s' in dev['name'].lower()):
         MIC_DEVICE_INDEX = i
@@ -196,7 +196,7 @@ for i, dev in enumerate(sd.query_devices()):
 if MIC_DEVICE_INDEX is None:
     raise RuntimeError("INMP441 마이크를 찾을 수 없습니다! arecord -l 명령으로 확인하세요.")
 
-print(f"[초기화] ✅ 마이크 장치 선택: [{MIC_DEVICE_INDEX}]\n")
+# print(f"[초기화] ✅ 마이크 장치 선택: [{MIC_DEVICE_INDEX}]\n")
 
 # ============================================================
 # 핵심 함수들
@@ -401,7 +401,7 @@ def main():
             if volume < 0.003:
                 continue
 
-            print(f"  [녹음] 볼륨: 평균={volume:.6f}, 최대={np.abs(waveform).max():.6f}")
+            # print(f"  [녹음] 볼륨: 평균={volume:.6f}, 최대={np.abs(waveform).max():.6f}")
 
             # --- 2. YAMNet 실행 (521개 분류 + 임베딩 추출) ---
             scores, embedding = run_yamnet(waveform)
