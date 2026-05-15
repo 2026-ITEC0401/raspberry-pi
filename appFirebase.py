@@ -283,7 +283,8 @@ def classify_with_yamnet(scores):
 
     # 1. 2차 분류기로 넘길지 확인
     if top_idx in YAMNET_TO_CLASSIFIER:
-        print(f"  [YAMNet] 2차 분류기로 넘김: {YAMNET_CLASSES[top_idx]} ({top_confidence:.3f})")
+        print()
+        print(f"\033[96m  [YAMNet] 2차 분류기로 넘김: {YAMNET_CLASSES[top_idx]} ({top_confidence:.3f})\033[0m")
         return "classifier", None, top_confidence
 
     # 2. 그 외는 무시
@@ -344,11 +345,20 @@ SOUND_TYPE_MAP = {
     "아기울음소리": "Noise"
 }
 
+# 소리 카테고리별 이모티콘 매핑
+SOUND_EMOJI_MAP = {
+    "도어락소리": "🔐",
+    "노크소리": "✊",
+    "비상벨소리": "🚨",
+    "아기울음소리": "👶"
+}
+
 def send_alert(sound, confidence):
     """감지된 소리 정보를 Firebase(Firestore)로 전송합니다."""
     try:
         # 1. 프론트엔드 명세에 맞게 type 필드 추가
         sound_type = SOUND_TYPE_MAP.get(sound, "Urgent-red") 
+        sound_emoji = SOUND_EMOJI_MAP.get(sound, "🔔") # 기본 이모티콘 설정
         
         alert_data = {
             "sound": sound,
@@ -362,7 +372,8 @@ def send_alert(sound, confidence):
         
         # Firestore의 'alarms' 컬렉션에 데이터 추가
         db.collection('alarms').add(alert_data)
-        print(f"  → 🔥 Firebase 전송 완료: {sound} ({confidence*100:.1f}%) [type: {sound_type}]")
+        print(f"  → Firebase 전송 완료: {sound_emoji} {sound} ({confidence*100:.1f}%) [type: {sound_type}]")
+        print()
         
     except Exception as e:
         print(f"  → [오류] Firebase 전송 실패: {e}")
