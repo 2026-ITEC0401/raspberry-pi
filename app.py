@@ -143,12 +143,19 @@ YAMNET_TO_CLASSIFIER = {
     20,    # Baby cry, infant cry
 
     # 사이렌 관련 (한국 사이렌 패턴 특화)
+    304,   # Car alarm
+    316,   # Emergency vehicle
+    317,   # Police car (siren)
+    318,   # Ambulance (siren)
+    319,   # Fire engine, fire truck (siren)
     382,   # Alarm
     389,   # Alarm clock
     390,   # Siren
     391,   # Civil defense siren
+    392,   # Buzzer
     393,   # Smoke detector, smoke alarm
     394,   # Fire alarm
+    494,   # Sine wave (전자음/비프음 — 사이렌, 가전, 벨소리 등이 이것으로 잡힘)
 
     # 도어락 관련
     348,   # Door
