@@ -294,8 +294,11 @@ def classify_with_yamnet(scores):
 
 def classify_sound(embedding):
     """
-    Hearo 분류기로 임베딩을 4개 카테고리로 분류합니다.
+    Hearo 분류기로 임베딩을 4개 상위 카테고리로 분류합니다.
     (노크소리, 도어락소리, 비상벨소리, 아기울음소리)
+
+    세부 카테고리(예: 사이렌_삐뽀삐뽀, 사이렌_안내음 등)의 확률을
+    상위 카테고리 그룹별로 합산하여 반환합니다.
     """
     input_data = embedding.reshape(1, -1).astype(np.float32)
 
@@ -304,36 +307,40 @@ def classify_sound(embedding):
 
     prediction = classifier_interpreter.get_tensor(classifier_output_details[0]['index'])[0]
 
-    # 디버그: 상위 3개
+    # 디버그: 세부 카테고리별 확률
     top3_idx = np.argsort(prediction)[::-1][:3]
     top3_info = [(CATEGORIES[i], f"{prediction[i]*100:.1f}%") for i in top3_idx]
-    print(f"  [분류기] Top3: {top3_info}")
+    print(f"  [분류기] 세부 Top3: {top3_info}")
 
-    best_idx = np.argmax(prediction)
-    raw_category = CATEGORIES[best_idx]
-    best_confidence = float(prediction[best_idx])
+    # 세부 카테고리 → 상위 카테고리 그룹 매핑
+    GROUP_MAP = {
+        "노크_목재": "노크소리",
+        "노크_철재문": "노크소리",
+        "도어락_개방음": "도어락소리",
+        "도어락_입력음": "도어락소리",
+        "사이렌_삐뽀삐뽀": "비상벨소리",
+        "사이렌_안내음": "비상벨소리",
+        "사이렌_애애애애앵": "비상벨소리",
+        "사이렌_철철철": "비상벨소리",
+        "아기 울음": "아기울음소리",
+    }
 
-    # 9개 세부 카테고리를 4개의 상위 카테고리로 매핑
-    if raw_category in ["노크_목재", "노크_철재문"]:
-        best_category = "노크소리"
-    elif raw_category in ["도어락_개방음", "도어락_입력음"]:
-        best_category = "도어락소리"
-    elif raw_category in ["사이렌_삐뽀삐뽀", "사이렌_안내음", "사이렌_애애애애앵", "사이렌_철철철"]:
-        best_category = "비상벨소리"
-    elif raw_category in ["아기 울음", "아기울음"]:
-        best_category = "아기울음소리"
-    else:
-        # 혹시 모를 다른 카테고리 이름에 대한 폴백(Fallback) 처리
-        if "노크" in raw_category:
-            best_category = "노크소리"
-        elif "도어락" in raw_category:
-            best_category = "도어락소리"
-        elif "사이렌" in raw_category or "비상벨" in raw_category:
-            best_category = "비상벨소리"
-        elif "아기 울음" in raw_category or "아기울음" in raw_category:
-            best_category = "아기울음소리"
-        else:
-            return None, 0.0
+    # 상위 카테고리 그룹별 확률 합산
+    group_scores = {}
+    for i, category in enumerate(CATEGORIES):
+        group = GROUP_MAP.get(category)
+        if group is None:
+            continue
+        group_scores[group] = group_scores.get(group, 0.0) + float(prediction[i])
+
+    # 디버그: 그룹별 합산 결과
+    print(f"  [분류기] 그룹 합산: {{{', '.join(f'{k}: {v*100:.1f}%' for k, v in group_scores.items())}}}")
+
+    if not group_scores:
+        return None, 0.0
+
+    best_category = max(group_scores, key=group_scores.get)
+    best_confidence = group_scores[best_category]
 
     return best_category, best_confidence
     
