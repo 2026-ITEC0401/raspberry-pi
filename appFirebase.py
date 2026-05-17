@@ -287,7 +287,7 @@ def classify_with_yamnet(scores):
     if top_idx in YAMNET_TO_CLASSIFIER:
         print()
         print(f"\033[96m  [YAMNet] 2차 분류기로 넘김: {YAMNET_CLASSES[top_idx]} ({top_confidence:.3f})\033[0m")
-        return "classifier", None, top_confidence
+        return "classifier", top_idx, top_confidence
 
     # 2. 그 외는 무시
     return "ignore", None, top_confidence
@@ -432,6 +432,13 @@ def main():
             if action == "classifier":
                 # 2차 분류기로 세부 판별 (노크/도어락/비상벨/아기울음)
                 sound, confidence = classify_sound(embedding)
+
+                # Sine wave(494)로 넘어온 경우, 비상벨소리만 허용
+                # (Sine wave는 전자음이므로 아기울음/도어락/노크는 오분류)
+                yamnet_top_idx = category  # classify_with_yamnet에서 반환한 top_idx
+                if yamnet_top_idx == 494 and sound != "비상벨소리":
+                    print(f"  [필터] Sine wave → {sound} 무시 (비상벨소리만 허용)")
+                    continue
 
                 if sound and confidence >= CLASSIFIER_THRESHOLD:
                     now = time.time()
