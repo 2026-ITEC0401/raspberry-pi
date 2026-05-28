@@ -1,0 +1,21 @@
+
+# Firebase 인증 키 (절대 업로드 금지!)
+serviceAccountKey.json
+
+# Python 가상환경
+hearo-env/
+venv/
+__pycache__/
+*.pyc
+
+# 모델 파일
+# *.tflite
+
+# 시스템 파일
+.DS_Store
+
+# 테스트 녹음 파일
+*.wav
+
+# 환경 변수
+.env
