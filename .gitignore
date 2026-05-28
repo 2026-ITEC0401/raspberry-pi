@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 # Firebase 인증 키 (절대 업로드 금지!)
 serviceAccountKey.json
@@ -19,3 +20,10 @@ __pycache__/
 
 # 환경 변수
 .env
+=======
+__pycache__/
+*.pyc
+
+# 라즈베리파이 인증키
+serviceAccountKey.json
+>>>>>>> b2d60885a5ad4843e64d1afd1168e8695e03ded6
