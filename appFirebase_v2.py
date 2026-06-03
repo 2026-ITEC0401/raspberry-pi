@@ -25,6 +25,8 @@ import threading  # ★ LED 스레드용 추가
 # ★ GPIO 라이브러리 추가
 import RPi.GPIO as GPIO
 
+import paho.mqtt.client as mqtt  # ★ MQTT 라이브러리 추가
+
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
@@ -44,6 +46,12 @@ MIC_SAMPLE_RATE = 48000
 YAMNET_SAMPLE_RATE = 16000
 RECORD_DURATION = 1.0
 COOLDOWN_SECONDS = 5
+
+# ★ MQTT 설정 (추가)
+MQTT_BROKER = "localhost"      # 라파이 자기 자신
+MQTT_PORT = 1883
+MQTT_TOPIC = "hearo/alert"     # ESP32가 구독할 토픽
+MQTT_CLIENT_ID = "hearo-rpi"
 
 # ============================================================
 # ★ LED GPIO 핀 설정 (추가)
@@ -127,6 +135,20 @@ classifier_interpreter = Interpreter(model_path=CLASSIFIER_MODEL_PATH)
 classifier_interpreter.allocate_tensors()
 classifier_input_details = classifier_interpreter.get_input_details()
 classifier_output_details = classifier_interpreter.get_output_details()
+
+# ============================================================
+# ★ MQTT 클라이언트 초기화 (추가)
+# ============================================================
+print("\n[초기화] MQTT 브로커 연결 중...")
+mqtt_client = mqtt.Client(client_id=MQTT_CLIENT_ID)
+
+try:
+    mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
+    mqtt_client.loop_start()  # 백그라운드 통신 시작
+    print(f"[초기화] ✅ MQTT 브로커 연결 완료: {MQTT_BROKER}:{MQTT_PORT}")
+except Exception as e:
+    print(f"[초기화] ⚠️ MQTT 연결 실패: {e}")
+    mqtt_client = None
 
 # ============================================================
 # 마이크 장치 자동 검색 (기존과 동일)
@@ -306,26 +328,33 @@ SOUND_EMOJI_MAP = {
 
 
 def send_alert(sound, confidence):
-    """감지된 소리 정보를 Firebase로 전송."""
+    """감지된 소리 정보를 Firebase + MQTT로 전송합니다."""
     try:
-        sound_type = SOUND_TYPE_MAP.get(sound, "Urgent-red")
+        sound_type = SOUND_TYPE_MAP.get(sound, "Urgent-red") 
         sound_emoji = SOUND_EMOJI_MAP.get(sound, "🔔")
         
+        # Firebase 전송 (기존)
         alert_data = {
             "sound": sound,
             "type": sound_type,
-            "confidence": float(confidence),
+            "confidence": float(confidence), 
             "location": LOCATION,
             "device_id": DEVICE_ID,
-            "time": firestore.SERVER_TIMESTAMP
+            "time": firestore.SERVER_TIMESTAMP  
         }
         
         db.collection('alarms').add(alert_data)
-        print(f"  → Firebase 전송 완료: {sound_emoji} {sound} ({confidence*100:.1f}%) [type: {sound_type}]")
+        print(f"  → 🔥 Firebase 전송: {sound_emoji} {sound} ({confidence*100:.1f}%)")
+        
+        # ★ MQTT 전송 추가 (ESP32용)
+        if mqtt_client is not None:
+            mqtt_client.publish(MQTT_TOPIC, sound)
+            print(f"  → 📡 MQTT 전송: {sound}")
+        
         print()
         
     except Exception as e:
-        print(f"  → [오류] Firebase 전송 실패: {e}")
+        print(f"  → [오류] 전송 실패: {e}")
 
 
 # ============================================================
@@ -390,8 +419,14 @@ def main():
 
     # ★ 종료 시 GPIO 정리
     GPIO.cleanup()
+    
+    # ★ MQTT 정리 추가
+    if mqtt_client is not None:
+        mqtt_client.loop_stop()
+        mqtt_client.disconnect()
+        print("MQTT 연결 종료")
+    
     print("GPIO 정리 완료")
-
 
 if __name__ == "__main__":
     main()
