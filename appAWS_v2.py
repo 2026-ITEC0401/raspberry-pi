@@ -184,13 +184,45 @@ cloud_runtime = DeviceCloudRuntime(
 )
 
 
-MIC_DEVICE_INDEX = None
-for index, device in enumerate(sd.query_devices()):
-    name = str(device.get("name", "")).lower()
-    if device.get("max_input_channels", 0) > 0 and ("voicehat" in name or "i2s" in name):
-        MIC_DEVICE_INDEX = index
-if MIC_DEVICE_INDEX is None:
-    raise RuntimeError("INMP441/I2S 입력 장치를 찾을 수 없습니다.")
+def select_microphone_device() -> int:
+    devices = list(sd.query_devices())
+    inputs = [
+        (index, device)
+        for index, device in enumerate(devices)
+        if int(device.get("max_input_channels", 0)) > 0
+    ]
+    requested_index = os.getenv("HEARO_MIC_DEVICE_INDEX", "").strip()
+    requested_name = os.getenv("HEARO_MIC_DEVICE_NAME", "").strip().casefold()
+
+    if requested_index:
+        try:
+            index = int(requested_index)
+            device = devices[index]
+        except (ValueError, IndexError) as exc:
+            raise RuntimeError("HEARO_MIC_DEVICE_INDEX가 유효한 장치 번호가 아닙니다.") from exc
+        if int(device.get("max_input_channels", 0)) <= 0:
+            raise RuntimeError("HEARO_MIC_DEVICE_INDEX가 입력 가능한 마이크가 아닙니다.")
+        return index
+
+    if requested_name:
+        for index, device in inputs:
+            if requested_name in str(device.get("name", "")).casefold():
+                return index
+        raise RuntimeError(f"HEARO_MIC_DEVICE_NAME과 일치하는 입력 장치가 없습니다: {requested_name}")
+
+    for index, device in inputs:
+        name = str(device.get("name", "")).casefold()
+        if "voicehat" in name or "i2s" in name:
+            return index
+    available = ", ".join(f"{index}:{device.get('name', '')}" for index, device in inputs)
+    raise RuntimeError(
+        "INMP441/I2S 입력 장치를 자동으로 찾지 못했습니다. "
+        "HEARO_MIC_DEVICE_INDEX 또는 HEARO_MIC_DEVICE_NAME을 설정하십시오. "
+        f"입력 장치={available or '없음'}"
+    )
+
+
+MIC_DEVICE_INDEX = select_microphone_device()
 
 
 def blink_led(pin: int, interval: float, duration: float) -> None:
@@ -432,7 +464,30 @@ def print_startup() -> None:
     print("=" * 60)
 
 
-def main(*, on_started=None, on_stopping=None) -> None:
+def _classification_parts(result: Any) -> tuple[str | None, float, str]:
+    """Accept the legacy tuple or a v3 decision object without importing v3."""
+    if isinstance(result, tuple) and len(result) == 3:
+        sound, confidence, raw_label = result
+        return sound, float(confidence), str(raw_label)
+    try:
+        return result.sound, float(result.confidence), str(result.raw_label)
+    except AttributeError as exc:
+        raise TypeError("분류 callback은 3-tuple 또는 decision object를 반환해야 합니다.") from exc
+
+
+def main(
+    *,
+    on_started=None,
+    on_stopping=None,
+    classify_fn=None,
+    send_alert_fn=None,
+) -> None:
+    """Run local inference, optionally delegating v3 decision/delivery callbacks.
+
+    With no callbacks this is the existing v2 decision path. A custom
+    send_alert_fn owns cooldown and LED/MQTT delivery so v3 can share one
+    source-aware implementation with remote ESP32 windows.
+    """
     print_startup()
     rolling_chunks: deque[np.ndarray] = deque(maxlen=BUFFER_CHUNKS)
     last_alert_time = 0.0
@@ -455,8 +510,16 @@ def main(*, on_started=None, on_stopping=None) -> None:
             if rms < SILENCE_RMS_THRESHOLD:
                 continue
 
-            sound, confidence, raw_label = classify_waveform(waveform)
+            classification = (
+                classify_fn(waveform) if classify_fn is not None else classify_waveform(waveform)
+            )
+            sound, confidence, raw_label = _classification_parts(classification)
             if sound is None:
+                continue
+
+            if send_alert_fn is not None:
+                print(f"[감지] {sound} ({raw_label}, {confidence * 100:.1f}%)")
+                send_alert_fn(classification)
                 continue
 
             now = time.time()

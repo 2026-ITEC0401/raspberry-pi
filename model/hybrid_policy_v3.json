@@ -1,0 +1,48 @@
+{
+  "schema_version": 3,
+  "policy_version": "hearo-hybrid-v3-unselected",
+  "enabled": false,
+  "shadow_mode": true,
+  "fallback": "hearo_v2",
+  "runtime": {
+    "history_expiry_seconds": null,
+    "max_window_age_seconds": null,
+    "stream_gap_reset_ms": null
+  },
+  "families": {
+    "critical_siren": {
+      "indices": [316, 317, 318, 319, 390, 391, 393, 394],
+      "frame_pooling": "max_class_then_topk_time",
+      "top_k": null,
+      "threshold": null,
+      "required_hits": null,
+      "history_size": null
+    },
+    "baby": {
+      "core_indices": [20],
+      "support_indices": [19, 21, 22],
+      "frame_pooling": "max_class_then_topk_time",
+      "top_k": null,
+      "threshold": null,
+      "combined_core_threshold": null,
+      "support_threshold": null,
+      "required_hits": null,
+      "history_size": null
+    },
+    "knock": {
+      "core_indices": [353],
+      "support_indices": [354],
+      "frame_pooling": "max_class_then_topk_time",
+      "top_k": null,
+      "yamnet_threshold": null,
+      "hearo_floor": null
+    },
+    "door_soft_support": {
+      "indices": [348, 351, 352, 386, 475, 476, 477],
+      "frame_pooling": "max_class_then_topk_time",
+      "top_k": null,
+      "max_threshold_bonus": null,
+      "minimum_hearo_floor": null
+    }
+  }
+}

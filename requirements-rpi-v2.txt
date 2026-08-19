@@ -1,0 +1,5 @@
+numpy>=1.26,<3
+paho-mqtt>=2,<3
+sounddevice>=0.4,<1
+scipy>=1.11,<2
+RPi.GPIO>=0.7,<1

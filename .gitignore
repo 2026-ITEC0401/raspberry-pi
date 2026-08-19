@@ -1,29 +1,28 @@
-<<<<<<< HEAD
-
-# Firebase 인증 키 (절대 업로드 금지!)
+# Local credentials and operator-specific settings
+.env
+.env.*
+!.env.example
+*.pem
+*.key
 serviceAccountKey.json
 
-# Python 가상환경
+# Python / notebook runtime files
 hearo-env/
 venv/
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
 
-# 모델 파일
-# *.tflite
-
-# 시스템 파일
-.DS_Store
-
-# 테스트 녹음 파일
+# Training data and large intermediate artifacts
+yamnet/data/
+yamnet/results/**/embedding_cache/
+model/*_float32.tflite
+model/*_dynamic.tflite
+model/*.keras
 *.wav
 
-# 환경 변수
-.env
-=======
-__pycache__/
-*.pyc
-
-# 라즈베리파이 인증키
-serviceAccountKey.json
->>>>>>> b2d60885a5ad4843e64d1afd1168e8695e03ded6
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/

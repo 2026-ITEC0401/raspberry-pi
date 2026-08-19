@@ -1,0 +1,101 @@
+{
+  "selection_data": "development grouped out-of-fold",
+  "baseline_development": {
+    "target_macro_f1": 0.7347590906706085,
+    "all_class_macro_f1": 0.7596362777827308,
+    "accuracy": 0.9601173020527859,
+    "false_alert_rate": 0.00665335994677312,
+    "ece": 0.012782199838818245,
+    "threshold": 0.0,
+    "cv_target_macro_f1_mean": 0.7136254405819623,
+    "cv_target_macro_f1_std": 0.013881118618654036,
+    "cv_false_alert_rate_mean": 0.006670216573846751
+  },
+  "baseline_untouched_test": {
+    "target_macro_f1": 0.7876543209876544,
+    "all_class_macro_f1": 0.8079617365710081,
+    "accuracy": 0.9736842105263158,
+    "false_alert_rate": 0.007957559681697613,
+    "ece": 0.016842295083072174
+  },
+  "champion_development": {
+    "target_macro_f1": 0.7347590906706085,
+    "all_class_macro_f1": 0.7596362777827308,
+    "accuracy": 0.9601173020527859,
+    "false_alert_rate": 0.00665335994677312,
+    "ece": 0.012782199838818245,
+    "threshold": 0.0,
+    "cv_target_macro_f1_mean": 0.7136254405819623,
+    "cv_target_macro_f1_std": 0.013881118618654036,
+    "cv_false_alert_rate_mean": 0.006670216573846751
+  },
+  "untouched_test": {
+    "target_macro_f1": 0.7876543209876544,
+    "all_class_macro_f1": 0.8079617365710081,
+    "accuracy": 0.9736842105263158,
+    "false_alert_rate": 0.007957559681697613,
+    "ece": 0.016842295083072174
+  },
+  "untouched_test_group_bootstrap_95ci": {
+    "target_macro_f1": [
+      0.33338193096813784,
+      0.8762528104969963
+    ],
+    "false_alert_rate": [
+      0.0,
+      0.021505376344086023
+    ],
+    "accuracy": [
+      0.9522586016205429,
+      0.9908883826879271
+    ]
+  },
+  "champion_config": {
+    "name": "current_clip_mean_mlp",
+    "head": "baseline",
+    "representation": "clip_mean",
+    "augmentation": "none",
+    "class_weighting": false
+  },
+  "champion_decision": {
+    "pooling": "mean_probability",
+    "context_frames": "full",
+    "temperature": 1.0,
+    "threshold_mode": "global",
+    "thresholds": 0.0
+  },
+  "rounds_completed": 1,
+  "promotion_delta": 0.005,
+  "false_alert_limit": 0.05,
+  "tflite": {
+    "float32_metrics_on_parity_set": {
+      "target_macro_f1": 0.9683455951707225,
+      "all_class_macro_f1": 0.9713785853225245,
+      "accuracy": 0.9952153110047847,
+      "false_alert_rate": 0.0,
+      "ece": 0.012131281013002117
+    },
+    "dynamic_metrics_on_parity_set": {
+      "target_macro_f1": 0.9683455951707225,
+      "all_class_macro_f1": 0.9713785853225245,
+      "accuracy": 0.9952153110047847,
+      "false_alert_rate": 0.0,
+      "ece": 0.012100201084720255
+    },
+    "selected": "dynamic_range",
+    "float32_bytes": 1188568,
+    "dynamic_bytes": 304784,
+    "selected_bytes": 304784,
+    "keras_tflite_max_abs_probability_error": 0.006230482198100851,
+    "float32_max_abs_probability_error": 1.2522552272908882e-07,
+    "dynamic_max_abs_probability_error": 0.006230482198100851,
+    "float32_colab_inference_ms": 0.11791564999839466,
+    "dynamic_colab_inference_ms": 0.06148555999970995,
+    "benchmark_frames": 1
+  },
+  "environment": {
+    "tensorflow": "2.20.0",
+    "tensorflow_hub": "0.16.1",
+    "python": "3.12.13 (main, Mar  4 2026, 09:23:07) [GCC 11.4.0]"
+  }
+}

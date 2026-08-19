@@ -1,0 +1,76 @@
+{
+  "schema_version": 2,
+  "model_name": "hearo_classifier_v2",
+  "created_at_utc": "2026-08-19T13:06:59.496794+00:00",
+  "sample_rate": 16000,
+  "record_step_seconds": 1.0,
+  "rolling_buffer_seconds": 2.0,
+  "yamnet_handle": "https://tfhub.dev/google/yamnet/1",
+  "yamnet_frame_seconds": 0.96,
+  "yamnet_hop_seconds": 0.48,
+  "classifier_input": {
+    "dtype": "float32",
+    "shape": [
+      null,
+      1024
+    ]
+  },
+  "classifier_output": {
+    "dtype": "float32",
+    "shape": [
+      null,
+      10
+    ],
+    "type": "probabilities"
+  },
+  "categories": [
+    "노크_목재",
+    "노크_철재문",
+    "도어락_개방음",
+    "도어락_입력음",
+    "사이렌_삐뽀삐뽀",
+    "사이렌_안내음",
+    "사이렌_애애애애앵",
+    "사이렌_철철철",
+    "아기 울음",
+    "비표적음"
+  ],
+  "unknown_label": "비표적음",
+  "representation": "clip_mean",
+  "frame_pooling": "mean_probability",
+  "context_frames": "full",
+  "temperature": 1.0,
+  "temperature_embedded_in_tflite": true,
+  "threshold_mode": "global",
+  "class_thresholds": {
+    "노크_목재": 0.0,
+    "노크_철재문": 0.0,
+    "도어락_개방음": 0.0,
+    "도어락_입력음": 0.0,
+    "사이렌_삐뽀삐뽀": 0.0,
+    "사이렌_안내음": 0.0,
+    "사이렌_애애애애앵": 0.0,
+    "사이렌_철철철": 0.0,
+    "아기 울음": 0.0,
+    "비표적음": 0.0
+  },
+  "unknown_false_alert_limit": 0.05,
+  "yamnet_gate": {
+    "enabled": false,
+    "reason": "비표적음 class가 2차 분류에서 거부를 담당"
+  },
+  "selected_tflite_variant": "dynamic_range",
+  "selected_epochs": 13,
+  "rounds_completed": 1,
+  "class_mapping": {
+    "노크_목재": "노크소리",
+    "노크_철재문": "노크소리",
+    "도어락_개방음": "도어락소리",
+    "도어락_입력음": "도어락소리",
+    "사이렌_삐뽀삐뽀": "비상벨소리",
+    "사이렌_안내음": "비상벨소리",
+    "사이렌_애애애애앵": "비상벨소리",
+    "사이렌_철철철": "비상벨소리",
+    "아기 울음": "아기울음소리"
+  }
+}
