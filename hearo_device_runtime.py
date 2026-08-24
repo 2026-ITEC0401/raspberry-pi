@@ -214,7 +214,9 @@ class DeviceCloudRuntime:
         }
 
     def _publish_presence(self, online: bool) -> None:
-        payload = self._state_payload(self._connected.is_set())
+        # Last Will/offline presence must never leave the device looking MQTT-connected.
+        mqtt_connected = self._connected.is_set() if online else False
+        payload = self._state_payload(mqtt_connected)
         payload["network_online"] = online
         self._publish_json(self.presence_topic, payload, retain=True)
 
