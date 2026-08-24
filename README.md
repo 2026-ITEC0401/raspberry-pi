@@ -103,6 +103,8 @@ export HEARO_MIC_DEVICE_INDEX=1
 python appAWS_v2.py
 ```
 
+주변 잡음이 무음으로 처리되지 않을 때는 실제 마이크의 조용한 상태 RMS를 측정한 뒤 `HEARO_SILENCE_RMS_THRESHOLD`를 조정할 수 있습니다. 기본값은 `0.003`이며, 측정 없이 크게 올리면 실제 알림음을 놓칠 수 있습니다.
+
 `appAWS_v3.py`는 세 ESP32가 보내는 인증된 UDP 오디오를 함께 처리합니다. `HEARO_AUDIO_PSK`를 모든 노드에 동일하게 설정한 뒤 실행합니다.
 
 ```bash
@@ -122,7 +124,8 @@ Colab에서 [yamnet_fine_tuning_v2.ipynb](yamnet/yamnet_fine_tuning_v2.ipynb)를
 ```bash
 python -m pytest tests/test_audio_protocol.py \
   tests/test_audio_receiver.py \
-  tests/test_hybrid_classifier.py
+  tests/test_hybrid_classifier.py \
+  tests/test_device_runtime_presence.py
 ```
 
 실기 배포 전에는 Pi와 ESP32가 같은 LAN에서 UDP 41000으로 통신하는지, 클래스 순서가 metadata와 같은지, LED GPIO와 MQTT/HTTPS 자격 증명이 올바른지 별도로 확인해야 합니다.
