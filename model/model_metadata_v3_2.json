@@ -1,0 +1,121 @@
+{
+  "schema_version": 4,
+  "training_run_mode": "paper",
+  "pipeline_revision": "yamnet-colab-paper-v3.2-matched-seeds-r1",
+  "model_name": "hearo_classifier_v3_2",
+  "taxonomy_version": "hearo-8-target-plus-unknown-v2-siren-patterns",
+  "created_at_utc": "2026-09-25T12:03:58.198831+00:00",
+  "final_training_seed_policy": "outer_split_seed + [1000, 2000, 3000], shared across methods",
+  "deployment_final_training_seed": 1042,
+  "test_seed_selection_used": false,
+  "sample_rate": 16000,
+  "record_step_seconds": 1.0,
+  "rolling_buffer_seconds": 2.0,
+  "yamnet_handle": "https://tfhub.dev/google/yamnet/1",
+  "yamnet_frame_seconds": 0.96,
+  "yamnet_hop_seconds": 0.48,
+  "classifier_input": {
+    "dtype": "float32",
+    "shape": [
+      null,
+      1024
+    ]
+  },
+  "classifier_output": {
+    "dtype": "float32",
+    "shape": [
+      null,
+      9
+    ],
+    "type": "probabilities"
+  },
+  "categories": [
+    "노크_목재",
+    "노크_철재문",
+    "도어락_개방음",
+    "도어락_입력음",
+    "사이렌_고저교번형",
+    "사이렌_완만변조형",
+    "사이렌_급속변조형",
+    "아기 울음",
+    "비표적음"
+  ],
+  "unknown_label": "비표적음",
+  "representation": "clip_mean",
+  "frame_pooling": "mean_probability",
+  "context_frames": "full",
+  "temperature": 1.0,
+  "temperature_embedded_in_tflite": true,
+  "threshold_mode": "per_class",
+  "class_thresholds": {
+    "노크_목재": 0.05,
+    "노크_철재문": 0.05,
+    "도어락_개방음": 0.4,
+    "도어락_입력음": 0.42,
+    "사이렌_고저교번형": 0.47,
+    "사이렌_완만변조형": 0.6900000000000001,
+    "사이렌_급속변조형": 0.05,
+    "아기 울음": 0.4,
+    "비표적음": 0.0
+  },
+  "unknown_false_alert_limit": 0.02,
+  "legacy_relabel": {
+    "사이렌_삐뽀삐뽀": "사이렌_고저교번형",
+    "사이렌_애애애애앵": "사이렌_완만변조형",
+    "사이렌_철철철": "사이렌_급속변조형",
+    "사이렌_안내음": "비표적음"
+  },
+  "hard_negative_policy": {
+    "enabled": false,
+    "scope": "lifestyle_environment_all_target_classes",
+    "categories": [
+      "노크_목재",
+      "노크_철재문",
+      "도어락_개방음",
+      "도어락_입력음",
+      "사이렌_고저교번형",
+      "사이렌_완만변조형",
+      "사이렌_급속변조형",
+      "아기 울음"
+    ],
+    "selected_arm": "baseline",
+    "selection_source": "none",
+    "raw_top1_minimum_confidence": 0.25,
+    "semihard_minimum_target_probability": 0.1,
+    "selected_files": 0,
+    "training_weight": 1.0,
+    "siren_hard_negative_enabled": true
+  },
+  "yamnet_gate": {
+    "enabled": false,
+    "speech_score_used": false,
+    "reason": "YAMNet Speech 점수를 거부 근거로 사용하지 않고 비표적음 확률과 임계값만 사용"
+  },
+  "selected_tflite_variant": "dynamic_range",
+  "selected_epochs": 10,
+  "rounds_completed": 2,
+  "class_mapping": {
+    "노크_목재": "노크소리",
+    "노크_철재문": "노크소리",
+    "도어락_개방음": "도어락소리",
+    "도어락_입력음": "도어락소리",
+    "사이렌_고저교번형": "비상벨소리",
+    "사이렌_완만변조형": "비상벨소리",
+    "사이렌_급속변조형": "비상벨소리",
+    "아기 울음": "아기울음소리"
+  },
+  "siren_label_definitions": {
+    "사이렌_고저교번형": {
+      "international_term": "Hi-Lo",
+      "operational_definition": "서로 다른 두 중심 주파수가 교대로 반복되는 사이렌"
+    },
+    "사이렌_완만변조형": {
+      "international_term": "Wail",
+      "operational_definition": "주파수가 비교적 완만하게 상승·하강하는 연속 사이렌"
+    },
+    "사이렌_급속변조형": {
+      "international_term": "Yelp",
+      "operational_definition": "주파수가 빠르게 상승·하강하며 반복되는 사이렌"
+    }
+  }
+}
