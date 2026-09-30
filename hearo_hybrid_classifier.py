@@ -271,6 +271,8 @@ class HybridDecisionEngine:
         yamnet_gate_allows: Callable[[np.ndarray], bool] | None = None,
         inference_lock: threading.RLock | threading.Lock | None = None,
         yamnet_class_names: Sequence[str] = (),
+        base_decision_source: str = "hearo_v2",
+        threshold_clip_range: tuple[float, float] = (0.05, 0.99),
         clock: Callable[[], float] = time.monotonic,
     ):
         validate_hybrid_policy(policy)
@@ -287,6 +289,22 @@ class HybridDecisionEngine:
         self.aggregate_context = aggregate_context
         self.yamnet_gate_allows = yamnet_gate_allows or (lambda scores: True)
         self.inference_lock = inference_lock or threading.RLock()
+        if not isinstance(base_decision_source, str) or not base_decision_source.strip():
+            raise HybridPolicyError("base_decision_source는 비어 있지 않은 문자열이어야 합니다.")
+        self.base_decision_source = base_decision_source.strip()
+        if (
+            not isinstance(threshold_clip_range, tuple)
+            or len(threshold_clip_range) != 2
+            or any(
+                isinstance(value, bool) or not isinstance(value, (int, float))
+                for value in threshold_clip_range
+            )
+        ):
+            raise HybridPolicyError("threshold_clip_range는 숫자 2개의 tuple이어야 합니다.")
+        threshold_min, threshold_max = map(float, threshold_clip_range)
+        if not 0.0 <= threshold_min <= threshold_max <= 1.0:
+            raise HybridPolicyError("threshold_clip_range는 0~1 범위여야 합니다.")
+        self.threshold_clip_range = (threshold_min, threshold_max)
         self.clock = clock
         self._history: dict[str, dict[str, deque[tuple[float, float]]]] = defaultdict(dict)
         self._last_capture_ms: dict[str, int] = {}
@@ -386,7 +404,11 @@ class HybridDecisionEngine:
         if self.policy.get("shadow_mode", False):
             return replace(
                 base,
-                decision_source=("hearo_v2_shadow" if base.sound else "hearo_v2_shadow_rejected"),
+                decision_source=(
+                    f"{self.base_decision_source}_shadow"
+                    if base.sound
+                    else f"{self.base_decision_source}_shadow_rejected"
+                ),
                 shadow_sound=hybrid.sound,
                 shadow_decision_source=hybrid.decision_source,
             )
@@ -424,21 +446,21 @@ class HybridDecisionEngine:
             return ClassificationDecision(
                 sound=None,
                 raw_label="yamnet_gate_rejected",
-                decision_source="hearo_v2",
+                decision_source=self.base_decision_source,
                 **common,
             )
         if raw_label == self.unknown_label or confidence < threshold:
             return ClassificationDecision(
                 sound=None,
                 raw_label=raw_label,
-                decision_source="hearo_v2",
+                decision_source=self.base_decision_source,
                 **common,
             )
         if self.delivery_policy.get(raw_label, {}).get("publish_enabled") is False:
             return ClassificationDecision(
                 sound=None,
                 raw_label=raw_label,
-                decision_source="hearo_v2_local_only",
+                decision_source=f"{self.base_decision_source}_local_only",
                 **common,
             )
         mapped = self.class_mapping.get(raw_label)
@@ -446,19 +468,19 @@ class HybridDecisionEngine:
             return ClassificationDecision(
                 sound=None,
                 raw_label=raw_label,
-                decision_source="hearo_v2_unmapped",
+                decision_source=f"{self.base_decision_source}_unmapped",
                 **common,
             )
         return ClassificationDecision(
             sound=mapped,
             raw_label=raw_label,
-            decision_source="hearo_v2",
+            decision_source=self.base_decision_source,
             **common,
         )
 
     def _threshold(self, raw_label: str) -> float:
         base = self.class_thresholds[raw_label] + float(self.sensitivity_offset())
-        return float(np.clip(base, 0.05, 0.99))
+        return float(np.clip(base, *self.threshold_clip_range))
 
     def _best_candidate(self, probabilities: np.ndarray, sound: str) -> tuple[str, float]:
         candidates = [

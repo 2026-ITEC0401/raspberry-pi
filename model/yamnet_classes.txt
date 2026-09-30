@@ -64,6 +64,7 @@ Applause
 Chatter
 Crowd
 Hubbub, speech noise, speech babble
+Children playing
 Animal
 Domestic animals, pets
 Dog

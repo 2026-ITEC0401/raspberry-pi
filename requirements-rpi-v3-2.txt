@@ -1,0 +1,6 @@
+-r requirements-rpi-v2.txt
+
+# Preferred lightweight TFLite interpreter used by appAWS_v3_2.py.
+# If the existing Pi virtualenv already imports ai_edge_litert, keep that
+# working installation instead of forcing a reinstall during deployment.
+ai-edge-litert

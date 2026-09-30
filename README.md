@@ -9,14 +9,14 @@ Raspberry Pi INMP441 ─┐
 ESP32 3대 INMP441 ────┼─(로컬 UDP PCM16)─> Raspberry Pi
                       │                       │
                       └───────────────────────┤ YAMNet 임베딩
-                                              ├ Hearo v2 10-class 분류
+                                              ├ Hearo v3.2 9-class 분류
                                               ├ 로컬 LED 알림
                                               └ MQTT TLS -> AWS -> DynamoDB/API
 ```
 
 | 기기 ID | 설치 위치 | 주요 역할 |
 |---|---|---|
-| `rpi-001` | 거실 | 마이크 수집, YAMNet/v2 추론, LED, 클라우드 발행 |
+| `rpi-001` | 거실 | 마이크 수집, YAMNet/v3.2 추론, LED, 클라우드 발행 |
 | `esp32_1` | 안방 | INMP441 수집, Pi로 로컬 오디오 전송, LED |
 | `esp32_2` | 현관 | INMP441 수집, Pi로 로컬 오디오 전송, LED |
 | `esp32_3` | 화장실 | INMP441 수집, Pi로 로컬 오디오 전송, LED |
@@ -27,23 +27,34 @@ ESP32 3대 INMP441 ────┼─(로컬 UDP PCM16)─> Raspberry Pi
 
 ```text
 .
-├── appAWS_v2.py                 # 배포 기준: Pi 마이크 v2 추론과 LED/MQTT
+├── appAWS_v2.py                 # 롤백용 v2 추론
 ├── appAWS_v3.py                 # Pi + ESP32 오디오 허브, 선택적 하이브리드 정책
+├── appAWS_v3_2.py               # 현재 배포: v3.2 newdata 추론·LED·MQTT·ESP32 허브
+├── hearo_model_runtime.py        # schema v4 메타데이터·TFLite 계약 검증 및 추론
 ├── hearo_device_runtime.py      # HTTPS config polling, heartbeat, MQTT TLS 상태 동기화
 ├── hearo_audio_protocol.py      # ESP32-Pi PCM16 UDP 패킷/HMAC 계약
 ├── hearo_audio_receiver.py      # 기기별 2초 rolling buffer와 추론 큐
 ├── hearo_hybrid_classifier.py   # v2 fallback을 보존하는 선택적 YAMNet 규칙 결합
 ├── model/                       # YAMNet 및 Hearo TFLite 배포 파일
+├── scripts/validate_model_v3_2.py # 하드웨어 없이 실행하는 v3.2 계약 검증
+├── infra/systemd/               # v3.2 systemd 서비스 예시
 ├── esp32/                       # ESP32 펌웨어
 ├── tests/                       # 로컬 오디오 및 하이브리드 의사결정 테스트
 └── yamnet/
+    ├── yamnet_fine_tuning_colab_paper_v3_2.ipynb
     ├── yamnet_fine_tuning_v2.ipynb
     ├── manifests/metadata.csv
     ├── results/v2/              # 검증된 수치와 재생성 가능한 그래프
     └── docs/
 ```
 
-## YAMNet v2 모델
+## YAMNet v3.2 newdata 모델
+
+현재 운영 프로파일은 `hearo_classifier_v3_2.tflite`입니다. YAMNet의 1024차원 임베딩을 입력으로 받아 8개 표적 클래스와 `비표적음`을 분류합니다. 배포 런타임은 schema version 4 메타데이터, 클래스 순서, 클래스별 임계값, 모델 입·출력 shape를 시작 시 검증합니다. `temperature_embedded_in_tflite=true`이므로 Pi에서 softmax나 temperature scaling을 중복 적용하지 않습니다.
+
+`appAWS_v2.py`와 v2 모델 산출물은 즉시 롤백을 위해 삭제하지 않고 유지합니다. 세부 계약·배포·롤백 절차는 [v3.2 배포 안내서](docs/RPI_YAMNET_V3_2_DEPLOYMENT.md)를 참고하십시오.
+
+## YAMNet v2 롤백 모델
 
 YAMNet 자체를 다시 학습하는 대신, 16 kHz 오디오에서 0.96초 창·0.48초 간격의 1024차원 임베딩을 추출하고 Hearo 전용 10-class 분류기를 학습합니다. 9개 표적 클래스와 `비표적음`을 함께 학습해 일상 배경음이 알림으로 전달되는 비율을 평가합니다.
 
@@ -71,7 +82,7 @@ cd raspberry-pi
 python3 -m venv hearo-env
 source hearo-env/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -r requirements-rpi-v2.txt
+python -m pip install -r requirements-rpi-v3-2.txt
 ```
 
 TFLite 런타임은 Pi와 Python 버전에 맞는 `ai-edge-litert`, `tflite-runtime` 또는 TensorFlow 중 하나가 추가로 필요합니다. 설치 후 아래 파일이 존재하는지 확인합니다.
@@ -79,9 +90,9 @@ TFLite 런타임은 Pi와 Python 버전에 맞는 `ai-edge-litert`, `tflite-runt
 ```text
 model/yamnet.tflite
 model/yamnet_classes.txt
-model/hearo_classifier_v2.tflite
-model/categories_v2.txt
-model/model_metadata_v2.json
+model/hearo_classifier_v3_2.tflite
+model/categories_v3_2.txt
+model/model_metadata_v3_2.json
 ```
 
 `.env.example`을 참고해 실제 값은 Git에 올리지 않는 별도 환경 파일에 저장합니다. 현재 프로그램은 환경 파일을 자동으로 읽지 않으므로 실행 전 셸 또는 systemd `EnvironmentFile`을 통해 변수를 주입해야 합니다.
@@ -92,7 +103,7 @@ cp .env.example .env
 set -a
 source .env
 set +a
-python appAWS_v2.py
+python appAWS_v3_2.py
 ```
 
 마이크 자동 탐색이 실패하면 장치 목록을 확인하고 `HEARO_MIC_DEVICE_INDEX` 또는 `HEARO_MIC_DEVICE_NAME`을 지정합니다.
@@ -100,22 +111,22 @@ python appAWS_v2.py
 ```bash
 python -m sounddevice
 export HEARO_MIC_DEVICE_INDEX=1
-python appAWS_v2.py
+python appAWS_v3_2.py
 ```
 
 주변 잡음이 무음으로 처리되지 않을 때는 실제 마이크의 조용한 상태 RMS를 측정한 뒤 `HEARO_SILENCE_RMS_THRESHOLD`를 조정할 수 있습니다. 기본값은 `0.003`이며, 측정 없이 크게 올리면 실제 알림음을 놓칠 수 있습니다.
 
-`appAWS_v3.py`는 세 ESP32가 보내는 인증된 UDP 오디오를 함께 처리합니다. `HEARO_AUDIO_PSK`를 모든 노드에 동일하게 설정한 뒤 실행합니다.
+`appAWS_v3_2.py`는 세 ESP32가 보내는 인증된 UDP 오디오를 함께 처리합니다. `HEARO_AUDIO_PSK`를 모든 노드에 동일하게 설정한 뒤 실행합니다.
 
 ```bash
-python appAWS_v3.py
+python appAWS_v3_2.py
 ```
 
 현재 `model/hybrid_policy_v3.json`은 임계값이 아직 선정되지 않아 `enabled=false`입니다. 따라서 v3를 실행해도 분류 결정은 안전하게 검증된 Hearo v2로 fallback합니다. 정책을 활성화하려면 별도 validation 자료로 모든 `null` 파라미터를 선택하고 회귀 테스트를 통과해야 합니다.
 
 ## 모델 재학습
 
-Colab에서 [yamnet_fine_tuning_v2.ipynb](yamnet/yamnet_fine_tuning_v2.ipynb)를 열고 Google Drive의 `소리 정리` 폴더와 `metadata.csv`를 준비한 후 위에서 아래로 전체 실행합니다. 동일 원본의 잘라낸 파일·증강본은 같은 `group_id`를 사용해야 하며, 원본 그룹이 train/validation/test에 겹치면 안 됩니다. 자세한 절차와 산출물 계약은 [v2 학습 가이드](yamnet/README_V2.md)에 있습니다.
+Colab에서 [v3.2 newdata 학습 노트북](yamnet/yamnet_fine_tuning_colab_paper_v3_2.ipynb)을 열고 Google Drive의 `소리 정리` 폴더와 `metadata.csv`를 준비한 후 위에서 아래로 전체 실행합니다. 노트북의 기본 출력 폴더는 `Hearo_model_colab_paper_v3_2_newdata_20260925`입니다. 사용한 메타데이터 스냅샷은 [metadata_v3_2_newdata_20260925.csv](yamnet/manifests/metadata_v3_2_newdata_20260925.csv)에 보존합니다. 동일 원본의 잘라낸 파일·증강본은 같은 `group_id`를 사용해야 하며, 원본 그룹이 train/validation/test에 겹치면 안 됩니다.
 
 ## 테스트
 
@@ -125,7 +136,10 @@ Colab에서 [yamnet_fine_tuning_v2.ipynb](yamnet/yamnet_fine_tuning_v2.ipynb)를
 python -m pytest tests/test_audio_protocol.py \
   tests/test_audio_receiver.py \
   tests/test_hybrid_classifier.py \
-  tests/test_device_runtime_presence.py
+  tests/test_device_runtime_presence.py \
+  tests/test_model_runtime_v3_2.py
+
+python scripts/validate_model_v3_2.py --model-dir model --repeat-count 3
 ```
 
 실기 배포 전에는 Pi와 ESP32가 같은 LAN에서 UDP 41000으로 통신하는지, 클래스 순서가 metadata와 같은지, LED GPIO와 MQTT/HTTPS 자격 증명이 올바른지 별도로 확인해야 합니다.
@@ -140,6 +154,7 @@ python -m pytest tests/test_audio_protocol.py \
 ## 문서
 
 - [YAMNet v2 학습·실행 가이드](yamnet/README_V2.md)
+- [YAMNet v3.2 newdata Raspberry Pi 배포·롤백 안내](docs/RPI_YAMNET_V3_2_DEPLOYMENT.md)
 - [YAMNet v2 평가 결과](yamnet/docs/v2-evaluation.md)
 - [기존 YAMNet 개요](yamnet/docs/overview.md)
 - [기존 파인튜닝 가이드](yamnet/docs/fine-tuning-guide.md)
